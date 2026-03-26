@@ -41,7 +41,7 @@ export default function AboutSection() {
           {/* ID Info */}
           <h3 className="mb-1 text-lg font-semibold text-white">{name}</h3>
           <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-cyan-400/60">
-            Operator // AI Engineer
+            Operator // Software Engineer
           </p>
           <div className="my-4 h-px w-full bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
 

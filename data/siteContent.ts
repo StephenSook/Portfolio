@@ -5,7 +5,7 @@ export const siteContent = {
   phone: "(516)-469-0248",
   linkedin: "https://www.linkedin.com/in/stephen-sookra-633682339/",
   github: "https://github.com/StephenSook",
-  bio: "I enjoy turning ideas into working products through coding, hackathons, and collaborative projects. My experience spans full-stack development, machine learning concepts, and software engineering, and I'm constantly learning new tools to improve my skills.\n\nRecently, I've worked on projects involving AI-powered applications, fintech solutions, and data-driven tools, often collaborating with teams to prototype and ship ideas quickly.\n\nMy goal is to grow as a software engineer and innovator, building technology that is impactful, practical, and accessible.",
+  bio: "Software engineer with hands-on experience in XR development, full-stack engineering, and machine learning. Currently interning at XR DOJO, where I contribute to an augmented reality mobile game in Unity and lead the migration of game interfaces to React.\n\nI thrive in fast-paced, collaborative environments — from cross-functional product teams to weekend hackathons — and I'm driven by the challenge of shipping polished, impactful software.\n\nMy goal is to build technology that pushes boundaries, whether it's immersive experiences, AI-powered tools, or products that make a real difference.",
   education: {
     school: "Kennesaw State University",
     location: "Kennesaw, Georgia",
@@ -23,6 +23,8 @@ export const siteContent = {
       "SQL",
       "C++",
       "Swift",
+      "C#",
+      "Unity",
       "React",
       "React Native",
       "TensorFlow",
@@ -46,13 +48,14 @@ export const siteContent = {
   },
   experience: [
     {
-      company: "Starbucks",
+      company: "XR DOJO",
       location: "Atlanta, Georgia",
-      role: "Barista",
-      period: "September 2023 – Present",
+      role: "Software Engineer Intern",
+      period: "March 2026 – Present",
       bullets: [
-        "Deliver excellent customer service in a fast-paced team environment while maintaining quality standards",
-        "Collaborate with team members to ensure smooth operations and efficient workflow during peak hours",
+        "Contributing to ATL Quest, an augmented reality mobile game built in Unity targeting XR devices",
+        "Leading the planned migration of game interfaces and experiences to React for improved performance and maintainability",
+        "Collaborating with a cross-functional team of developers, designers, and creatives in a fast-paced, project-based environment focused on immersive technology and XR development",
       ],
     },
   ],
