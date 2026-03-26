@@ -75,18 +75,18 @@ export const siteContent = {
       live: "",
     },
     {
-      title: "Hexbear",
-      subtitle: "Gamified Climate-Action App",
-      date: "February 2026",
-      tech: ["React Native", "TypeScript", "Supabase", "Google Cloud Vision API"],
+      title: "PyroLens",
+      subtitle: "AI-Powered Prescribed Burn Optimizer",
+      date: "March 2026",
+      tech: ["React", "Vite", "FastAPI", "scikit-learn", "ESP32", "Supabase"],
       bullets: [
-        "Built a cross-platform mobile app that gamifies sustainability by turning recycling and energy conservation into wizard-themed quests with GHG tracking",
-        "Integrated Google Cloud Vision API with a custom scoring algorithm for AI-powered recyclability detection",
-        "Engineered full-stack architecture with Supabase Auth, PostgreSQL with RLS, and cloud storage",
+        "Built a real-time dashboard with live IoT sensor data, burn readiness scoring, and ML-backed burn window predictions",
+        "Integrated NOAA weather, Sentinel Hub NDVI satellite imagery, and FIRMS fire data APIs for environmental analysis",
+        "Engineered full-stack architecture with ESP32 hardware (DHT22 + soil moisture), FastAPI backend, and Supabase",
       ],
-      award: "",
-      github: "https://github.com/tylinndd/hexbear",
-      live: "",
+      award: "2nd Place Assurant Challenge & 3rd Place Capgemini Net Positive AI — KSU Hackathon for Social Good 2026",
+      github: "https://github.com/StephenSook/PyroLens",
+      live: "https://lnkd.in/e-ihAjKR",
     },
     {
       title: "EchoPay",
@@ -126,7 +126,8 @@ export const siteContent = {
   ],
   awards: [
     "1st Place Overall — HMI Hackathon 2026",
+    "2nd Place Assurant Challenge — KSU Hackathon for Social Good 2026",
+    "3rd Place Capgemini Net Positive AI — KSU Hackathon for Social Good 2026",
     "3rd Place Overall — KSU FinTech Hackathon 2025",
-    "3rd Place Healthcare Track — Emory Hacks 2025",
   ],
 };

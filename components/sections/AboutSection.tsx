@@ -72,7 +72,7 @@ export default function AboutSection() {
               <p className="font-mono text-[9px] uppercase text-slate-500 tracking-wider">
                 Missions
               </p>
-              <p className="text-sm text-white">5× Hackathon</p>
+              <p className="text-sm text-white">7× Hackathon</p>
             </div>
           </div>
         </HUDPanel>
