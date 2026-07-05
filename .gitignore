@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# reference-site bundle rips (kept local for analysis, never commit)
+cortiz code
+dave code
+
+# recon / scratch artifacts (playwright, screenshots)
+.playwright-mcp/
+*-snapshot.md
+cortiz-*.jpeg
+dave-*.jpeg
+/*.jpeg
