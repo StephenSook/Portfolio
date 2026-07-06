@@ -33,8 +33,8 @@ const SITE_URL = "https://stephensookra.com";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Stephen Sookra — Software Engineer",
-    template: "%s — Stephen Sookra",
+    default: "Stephen Sookra · Software Engineer",
+    template: "%s · Stephen Sookra",
   },
   description:
     "Stephen Sookra is a Computer Science student at Kennesaw State University building AI and full-stack systems. 7 top-3 finishes across 6 hackathon events (15+ entered).",
@@ -52,14 +52,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: SITE_URL,
-    title: "Stephen Sookra — Software Engineer",
+    title: "Stephen Sookra · Software Engineer",
     description:
       "Building intelligent systems that matter. AI and full-stack engineer. 7 top-3 hackathon finishes across 6 events.",
     siteName: "Stephen Sookra",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Stephen Sookra — Software Engineer",
+    title: "Stephen Sookra · Software Engineer",
     description:
       "Building intelligent systems that matter. AI and full-stack engineer. 7 top-3 hackathon finishes across 6 events.",
   },
