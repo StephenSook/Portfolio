@@ -1,26 +1,54 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { FiGithub, FiLinkedin, FiMail } from "react-icons/fi";
 import { gsap } from "gsap";
 import { MagneticButton } from "@/components/hud/MagneticButton";
-import { useReducedMotion } from "@/lib/motion";
+import { useCoarsePointer, useReducedMotion } from "@/lib/motion";
 import { profile } from "@/data/profile";
 
-function HeroBackdrop() {
+/**
+ * Cinematic video background: green-and-gold energy. The poster paints first
+ * (LCP), the video autoplays muted + looped over it. Reduced motion and touch
+ * devices get the still poster only.
+ */
+function HeroVideo() {
+  const reduced = useReducedMotion();
+  const coarse = useCoarsePointer();
+  const still = reduced || coarse;
+
   return (
-    <div
-      aria-hidden
-      className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_45%,rgba(141,255,90,0.14),transparent_52%),radial-gradient(ellipse_at_50%_55%,rgba(245,179,60,0.07),transparent_50%),#05070a]"
-    />
+    <div aria-hidden className="absolute inset-0 overflow-hidden bg-[#05070a]">
+      {still ? (
+        <Image
+          src="/hero/hero-poster.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
+      ) : (
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster="/hero/hero-poster.jpg"
+          className="h-full w-full object-cover"
+        >
+          <source src="/hero/hero.webm" type="video/webm" />
+          <source src="/hero/hero.mp4" type="video/mp4" />
+        </video>
+      )}
+      {/* legibility: darken + vignette so the type reads over the smoke */}
+      <div className="absolute inset-0 bg-black/45" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(5,7,10,0.75)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,7,10,0.6),transparent_25%,transparent_70%,rgba(5,7,10,0.85))]" />
+    </div>
   );
 }
-
-const HeroShader = dynamic(
-  () => import("@/components/three/HeroShader").then((m) => m.HeroShader),
-  { ssr: false, loading: () => <HeroBackdrop /> }
-);
 
 const WORDS = ["SYSTEMS", "PRODUCTS", "EXPERIENCES", "TOOLS"];
 
@@ -98,7 +126,7 @@ export function Hero() {
       ref={scope}
       className="relative flex min-h-svh w-full flex-col justify-between overflow-hidden py-6"
     >
-      <HeroShader />
+      <HeroVideo />
 
       {/* top bar: wordmark + tag */}
       <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-6">
