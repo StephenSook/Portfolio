@@ -39,9 +39,10 @@ export default function About() {
           <div>
             <KineticText
               as="h2"
-              text="Student, builder, engineer."
+              text="Student. Builder. Engineer."
+              splitBy="word"
               onScroll
-              className="font-display text-4xl leading-[1.05] text-[var(--text)] md:text-6xl"
+              className="font-display text-4xl leading-[1.05] text-[var(--text)] [text-wrap:balance] md:text-6xl"
             />
 
             <div className="mt-8 space-y-5 text-lg leading-relaxed text-[var(--muted)] md:text-xl">

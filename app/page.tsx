@@ -10,7 +10,6 @@ import Comms from "@/components/sections/Comms";
 import { Reveal } from "@/components/anim/Reveal";
 import { NavDock } from "@/components/hud/NavDock";
 import { CustomCursor } from "@/components/hud/CustomCursor";
-import { Scanline } from "@/components/hud/Scanline";
 import { KonamiTheme } from "@/components/hud/KonamiTheme";
 import { AudioManager } from "@/components/audio/AudioManager";
 import { AchievementToaster } from "@/components/hud/AchievementToast";
@@ -19,7 +18,6 @@ export default function Home() {
   return (
     <>
       <Boot />
-      <Scanline />
       <CustomCursor />
       <NavDock />
       <AudioManager />
