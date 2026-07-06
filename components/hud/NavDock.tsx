@@ -5,13 +5,13 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { id: "top", label: "Home" },
-  { id: "about", label: "Tape" },
+  { id: "about", label: "About" },
   { id: "arsenal", label: "Arsenal" },
-  { id: "work", label: "Missions" },
+  { id: "work", label: "Work" },
   { id: "service-record", label: "Record" },
   { id: "bench", label: "Lineup" },
-  { id: "resume", label: "Dossier" },
-  { id: "contact", label: "Comms" },
+  { id: "resume", label: "Resume" },
+  { id: "contact", label: "Contact" },
 ];
 
 /** Fixed HUD nav. Fades in after the hero, highlights the active section. */

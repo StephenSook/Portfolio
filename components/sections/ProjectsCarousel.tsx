@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { FiArrowUpRight, FiArrowRight } from "react-icons/fi";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { projects } from "@/data/projects";
 import type { Project } from "@/data/types";
 import { MagneticButton } from "@/components/hud/MagneticButton";
@@ -12,33 +14,41 @@ import { cn } from "@/lib/utils";
 const featured = projects.filter((p) => p.tier === "featured");
 const archiveCount = projects.filter((p) => p.tier === "archive").length;
 
-/** The tilting card with the project's live-site video preview. */
 function ProjectCard({ p, active }: { p: Project; active: number }) {
   const card = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
   const coarse = useCoarsePointer();
+
+  // 3D entrance on each project change.
+  useEffect(() => {
+    if (reduced || coarse || !card.current) return;
+    gsap.fromTo(
+      card.current,
+      { rotateY: -32, y: 24, opacity: 0 },
+      { rotateY: 0, y: 0, opacity: 1, duration: 0.75, ease: "power3.out" }
+    );
+  }, [active, reduced, coarse]);
 
   const onMove = (e: React.MouseEvent) => {
     if (reduced || coarse || !card.current) return;
     const r = card.current.getBoundingClientRect();
     const x = (e.clientX - (r.left + r.width / 2)) / r.width;
     const y = (e.clientY - (r.top + r.height / 2)) / r.height;
-    card.current.style.transform = `perspective(1200px) rotateY(${x * 10}deg) rotateX(${-y * 10}deg)`;
+    card.current.style.transform = `rotateY(${x * 9}deg) rotateX(${-y * 9}deg)`;
   };
   const reset = () => {
-    if (card.current)
-      card.current.style.transform = "perspective(1200px) rotateY(0deg) rotateX(0deg)";
+    if (card.current) card.current.style.transform = "rotateY(0deg) rotateX(0deg)";
   };
 
   return (
     <div
-      className="relative mx-auto w-full max-w-[560px]"
+      className="relative mx-auto w-full max-w-[560px] [perspective:1400px]"
       onMouseMove={onMove}
       onMouseLeave={reset}
     >
       <div
         ref={card}
-        className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-[var(--line-strong)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] transition-transform duration-300 will-change-transform"
+        className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-[var(--line-strong)] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] transition-transform duration-300 will-change-transform [transform-style:preserve-3d]"
         style={{ ["--accent"]: "#8dff5a" } as CSSProperties}
       >
         <video
@@ -54,9 +64,8 @@ function ProjectCard({ p, active }: { p: Project; active: number }) {
           <source src={`/projects/${p.slug}/preview.webm`} type="video/webm" />
           <source src={`/projects/${p.slug}/preview.mp4`} type="video/mp4" />
         </video>
-        {/* frame glow + label */}
-        <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-[var(--accent)]/20" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/80 to-transparent p-5">
+        <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-[var(--accent)]/25" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/85 to-transparent p-5">
           <span className="font-display text-3xl text-white md:text-4xl">
             {p.name}
           </span>
@@ -73,10 +82,7 @@ function ProjectCard({ p, active }: { p: Project; active: number }) {
 
 function InfoPanel({ p }: { p: Project }) {
   return (
-    <div
-      key={p.slug}
-      className="animate-[word-in_0.5s_cubic-bezier(0.16,1,0.3,1)]"
-    >
+    <div key={p.slug} className="animate-[word-in_0.55s_cubic-bezier(0.16,1,0.3,1)]">
       <span className="hud-label text-[var(--muted)]">
         {p.role || "Project"} — {p.dates}
       </span>
@@ -130,45 +136,56 @@ function InfoPanel({ p }: { p: Project }) {
 
 export function ProjectsCarousel() {
   const sectionRef = useRef<HTMLElement>(null);
+  const stRef = useRef<ScrollTrigger | null>(null);
+  const activeRef = useRef(0);
   const [active, setActive] = useState(0);
   const coarse = useCoarsePointer();
+  const reduced = useReducedMotion();
 
+  // Pin the section and step the active project through scroll, with snap.
   useEffect(() => {
-    const el = sectionRef.current;
-    if (!el || coarse) return;
-    let raf = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const rect = el.getBoundingClientRect();
-        const total = rect.height - window.innerHeight;
-        const prog = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
-        setActive(Math.round(prog * (featured.length - 1)));
+    if (coarse || reduced || !sectionRef.current) return;
+    gsap.registerPlugin(ScrollTrigger);
+    const n = featured.length;
+    const ctx = gsap.context(() => {
+      stRef.current = ScrollTrigger.create({
+        trigger: sectionRef.current,
+        start: "top top",
+        end: () => "+=" + window.innerHeight * (n - 1) * 1.15,
+        pin: true,
+        anticipatePin: 1,
+        snap: {
+          snapTo: (v) => Math.round(v * (n - 1)) / (n - 1),
+          duration: { min: 0.2, max: 0.5 },
+          ease: "power2.inOut",
+        },
+        onUpdate: (self) => {
+          const idx = Math.min(n - 1, Math.round(self.progress * (n - 1)));
+          if (idx !== activeRef.current) {
+            activeRef.current = idx;
+            setActive(idx);
+          }
+        },
       });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
-    };
-  }, [coarse]);
+    }, sectionRef);
+    return () => ctx.revert();
+  }, [coarse, reduced]);
 
-  const scrollTo = (i: number) => {
-    const el = sectionRef.current;
-    if (!el) return;
-    const total = el.offsetHeight - window.innerHeight;
-    const top = el.offsetTop + (i / (featured.length - 1)) * total;
+  const goTo = (i: number) => {
+    const st = stRef.current;
+    if (!st) return;
+    const n = featured.length;
+    const top = st.start + (i / (n - 1)) * (st.end - st.start);
     window.scrollTo({ top, behavior: "smooth" });
   };
 
-  // Mobile: a simple stacked list of cards (no pinning).
-  if (coarse) {
+  // Mobile / reduced motion: a simple stacked list (no pin).
+  if (coarse || reduced) {
     return (
       <section id="work" className="mx-auto max-w-6xl px-6 py-24">
         <span className="hud-label text-[var(--muted)]">Selected work</span>
         <h2 className="mt-3 font-display text-5xl text-[var(--text)]">Work</h2>
-        <div className="mt-10 flex flex-col gap-12">
+        <div className="mt-10 flex flex-col gap-14">
           {featured.map((p, i) => (
             <div key={p.slug}>
               <ProjectCard p={p} active={i} />
@@ -190,19 +207,12 @@ export function ProjectsCarousel() {
   const p = featured[active];
 
   return (
-    <section
-      id="work"
-      ref={sectionRef}
-      style={{ height: `${featured.length * 100}vh` }}
-      className="relative"
-    >
-      <div className="sticky top-0 flex h-screen w-full items-center overflow-hidden">
+    <section id="work" ref={sectionRef} className="relative h-svh w-full overflow-hidden">
+      <div className="flex h-full w-full items-center">
         <div className="mx-auto w-full max-w-7xl px-6">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <span className="hud-label text-[var(--muted)]">
-                Selected work
-              </span>
+              <span className="hud-label text-[var(--muted)]">Selected work</span>
               <h2 className="mt-1 font-display text-4xl text-[var(--text)] md:text-5xl">
                 Work
               </h2>
@@ -214,13 +224,12 @@ export function ProjectsCarousel() {
           </div>
 
           <div className="grid grid-cols-[auto_1.2fr_1fr] items-center gap-10">
-            {/* left numbered nav */}
             <ul className="flex flex-col gap-3">
               {featured.map((f, i) => (
                 <li key={f.slug}>
                   <button
                     type="button"
-                    onClick={() => scrollTo(i)}
+                    onClick={() => goTo(i)}
                     className={cn(
                       "group flex items-center gap-3 text-left transition-opacity",
                       i === active ? "opacity-100" : "opacity-35 hover:opacity-70"
@@ -248,15 +257,13 @@ export function ProjectsCarousel() {
               ))}
             </ul>
 
-            {/* center card */}
             <ProjectCard p={p} active={active} />
 
-            {/* right info */}
             <InfoPanel p={p} />
           </div>
 
           <div className="mt-8 flex items-center justify-between">
-            <span className="hud-label text-[var(--muted)]">Scroll to explore</span>
+            <span className="hud-label text-[var(--muted)]">Scroll to step through</span>
             <Link
               href="/work"
               className="font-hud text-xs uppercase tracking-[0.16em] text-[var(--muted)] transition-colors hover:text-[var(--accent)]"
