@@ -1,136 +1,187 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
-import { KineticText } from "@/components/hud/KineticText";
+import { useEffect, useRef, useState } from "react";
+import { FiGithub, FiLinkedin, FiMail } from "react-icons/fi";
+import { gsap } from "gsap";
 import { MagneticButton } from "@/components/hud/MagneticButton";
 import { useReducedMotion } from "@/lib/motion";
 import { profile } from "@/data/profile";
 
-/**
- * SSR-safe static energy backdrop shown until the WebGL chunk loads. Mirrors
- * HeroShader's own StaticFallback exactly so the swap is seamless and there is
- * never a second stacked gradient layer. Defined locally (no three.js import)
- * so the heavy WebGL deps stay fully code-split from the initial route bundle.
- */
 function HeroBackdrop() {
   return (
     <div
       aria-hidden
-      className="absolute inset-0 bg-[radial-gradient(ellipse_at_55%_45%,rgba(141,255,90,0.12),transparent_58%),radial-gradient(ellipse_at_28%_72%,rgba(245,179,60,0.08),transparent_55%),#05070a]"
+      className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_45%,rgba(141,255,90,0.14),transparent_52%),radial-gradient(ellipse_at_50%_55%,rgba(245,179,60,0.07),transparent_50%),#05070a]"
     />
   );
 }
 
-// Code-split the WebGL hero (three.js + @react-three/fiber, ~heavy) out of the
-// initial route bundle. It only renders after hydration and is purely
-// decorative, so it must never sit in the first-paint critical path.
 const HeroShader = dynamic(
   () => import("@/components/three/HeroShader").then((m) => m.HeroShader),
   { ssr: false, loading: () => <HeroBackdrop /> }
 );
 
-const ROLES = [
-  "Software Engineer",
-  "AI + ML Engineer",
-  "Full-Stack Builder",
-  "Hackathon Finisher",
-];
+const WORDS = ["SYSTEMS", "PRODUCTS", "EXPERIENCES", "TOOLS"];
 
-function RoleRotator() {
+function RotatingWord() {
   const reduced = useReducedMotion();
   const [i, setI] = useState(0);
   useEffect(() => {
     if (reduced) return;
-    const id = setInterval(() => setI((n) => (n + 1) % ROLES.length), 2600);
+    const id = setInterval(() => setI((n) => (n + 1) % WORDS.length), 2800);
     return () => clearInterval(id);
   }, [reduced]);
   return (
-    <span className="font-hud text-[var(--accent)]">
-      {ROLES[i]}
+    <span className="relative inline-block text-[var(--accent)]">
+      <span
+        key={i}
+        className="inline-block animate-[word-in_0.7s_cubic-bezier(0.16,1,0.3,1)]"
+      >
+        {WORDS[i]}
+      </span>
     </span>
   );
 }
 
-function Corner({ className }: { className: string }) {
+/** White knockout marquee band (Cortiz technique: bg-white + soft-light blend). */
+function Band({ text, reverse }: { text: string; reverse?: boolean }) {
+  const reduced = useReducedMotion();
+  const items = Array.from({ length: 8 }, () => text);
   return (
-    <span
-      aria-hidden
-      className={`pointer-events-none absolute h-6 w-6 border-[var(--accent)]/50 ${className}`}
-    />
+    <div className="pointer-events-none w-full overflow-hidden bg-white opacity-[0.55] mix-blend-soft-light">
+      <div
+        className={
+          "flex w-max whitespace-nowrap " +
+          (reduced
+            ? ""
+            : reverse
+              ? "animate-[marquee-r_28s_linear_infinite]"
+              : "animate-[marquee-l_28s_linear_infinite]")
+        }
+      >
+        {[...items, ...items].map((t, k) => (
+          <span
+            key={k}
+            className="px-6 font-hud text-2xl font-semibold uppercase tracking-[0.12em] text-black md:text-[2.4rem]"
+          >
+            {t} <span className="opacity-40">—</span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
 export function Hero() {
+  const scope = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    if (reduced || !scope.current) return;
+    const ctx = gsap.context(() => {
+      gsap.from("[data-hero-in]", {
+        opacity: 0,
+        filter: "blur(18px)",
+        y: 24,
+        duration: 1.1,
+        ease: "power4.out",
+        stagger: 0.12,
+      });
+    }, scope);
+    return () => ctx.revert();
+  }, [reduced]);
+
   return (
     <section
       id="top"
-      className="relative flex min-h-svh w-full items-center overflow-hidden"
+      ref={scope}
+      className="relative flex min-h-svh w-full flex-col justify-between overflow-hidden py-6"
     >
       <HeroShader />
-      {/* soft floor + edge vignette to seat the type */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-[linear-gradient(to_top,var(--bg),transparent_45%)]"
-      />
 
-      {/* operator HUD frame */}
-      <Corner className="left-5 top-5 border-l-2 border-t-2" />
-      <Corner className="right-5 top-5 border-r-2 border-t-2" />
-      <Corner className="bottom-5 left-5 border-b-2 border-l-2" />
-      <Corner className="bottom-5 right-5 border-b-2 border-r-2" />
-
-      {/* top status bar */}
-      <div className="absolute inset-x-0 top-6 z-10 mx-auto flex max-w-6xl items-center justify-between px-8 md:px-10">
-        <span className="hud-label flex items-center gap-2">
-          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
-          System online // {profile.handle}
+      {/* top bar: wordmark + tag */}
+      <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-6">
+        <span
+          data-hero-in
+          className="font-display text-xl font-semibold tracking-tight text-[var(--text)] md:text-2xl"
+        >
+          Stephen Sookra
         </span>
-        <span className="hud-label hidden text-[var(--muted)] sm:block">
-          {profile.location} · 33.75N
+        <span data-hero-in className="hud-label hidden text-[var(--muted)] sm:block">
+          AI + Full-Stack Engineer
         </span>
       </div>
 
-      {/* hero content */}
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-6">
-        <p className="hud-label mb-5 text-[var(--muted)]">Portfolio // 2026</p>
-        <h1 className="font-display text-[19vw] leading-[0.86] text-[var(--text)] sm:text-[16vw] md:text-[13rem]">
-          <KineticText text="STEPHEN" as="span" className="block" />
-          <KineticText
-            text="SOOKRA"
-            as="span"
-            className="block text-[var(--accent)]"
-            delay={0.12}
-          />
+      {/* top marquee */}
+      <div data-hero-in className="relative z-10">
+        <Band text="Software Engineer" />
+      </div>
+
+      {/* center statement */}
+      <div className="relative z-20 mx-auto w-full max-w-7xl px-6 text-center">
+        <p data-hero-in className="hud-label mb-6 text-[var(--muted)]">
+          Portfolio — 2026
+        </p>
+        <h1 className="font-display leading-[0.92] text-[var(--text)]">
+          <span
+            data-hero-in
+            className="block text-[13vw] font-light italic text-[var(--text)]/25 md:text-[8rem]"
+          >
+            Build intelligent
+          </span>
+          <span
+            data-hero-in
+            className="block text-[16vw] font-black md:text-[11rem]"
+          >
+            <RotatingWord />
+          </span>
         </h1>
 
-        <div className="mt-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="font-hud text-lg text-[var(--muted)] md:text-xl">
-              <RoleRotator />
-            </p>
-            <p className="mt-2 max-w-md text-sm text-[var(--muted)] md:text-base">
-              {profile.tagline}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <MagneticButton
-              href="#work"
-              className="!border-[var(--accent)] !text-[var(--accent)]"
-            >
-              View Missions
-            </MagneticButton>
-            <MagneticButton href="#resume">Dossier</MagneticButton>
-          </div>
+        <div
+          data-hero-in
+          className="mt-10 flex flex-wrap items-center justify-center gap-3"
+        >
+          <MagneticButton
+            href="#work"
+            className="!border-[var(--accent)] !text-[var(--accent)]"
+          >
+            View Work
+          </MagneticButton>
+          <MagneticButton href="#resume">Resume</MagneticButton>
         </div>
       </div>
 
-      {/* scroll cue */}
-      <div className="absolute bottom-7 left-1/2 z-10 -translate-x-1/2">
-        <span className="hud-label flex flex-col items-center gap-2 text-[var(--muted)]">
-          Scroll
-          <span className="h-8 w-px animate-pulse bg-[var(--muted)]" />
-        </span>
+      {/* bottom: social + marquee */}
+      <div className="relative z-20">
+        <div
+          data-hero-in
+          className="mx-auto mb-4 flex w-full max-w-7xl items-center justify-between px-6"
+        >
+          <div className="flex items-center gap-3">
+            {[
+              { href: profile.github, Icon: FiGithub, label: "GitHub" },
+              { href: profile.linkedin, Icon: FiLinkedin, label: "LinkedIn" },
+              { href: `mailto:${profile.email}`, Icon: FiMail, label: "Email" },
+            ].map(({ href, Icon, label }) => (
+              <a
+                key={label}
+                href={href}
+                target={href.startsWith("http") ? "_blank" : undefined}
+                rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+                aria-label={label}
+                className="grid h-10 w-10 place-items-center rounded-full border border-[var(--line-strong)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <Icon size={16} />
+              </a>
+            ))}
+          </div>
+          <span className="hud-label flex items-center gap-2 text-[var(--muted)]">
+            Scroll
+            <span className="h-6 w-px animate-pulse bg-[var(--muted)]" />
+          </span>
+        </div>
+        <Band text="Stephen Sookra" reverse />
       </div>
     </section>
   );

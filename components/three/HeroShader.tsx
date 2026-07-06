@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useReducedMotion, useCoarsePointer, useHydrated } from "@/lib/motion";
@@ -14,12 +14,13 @@ const vertex = /* glsl */ `
 `;
 
 /**
- * Dark Halo energy field: domain-warped fractal noise, green + gold veins,
- * a slow drift, mouse parallax, and an ordered 8x8 Bayer dither (the Cortiz
- * signature) for a premium banding-free gradient. No ring, no orbiting dots.
+ * A central dithered energy artifact. Optimized for cost: mediump, 3-octave
+ * FBM, a single domain warp, a cheap interleaved-gradient dither with color
+ * quantization for the pixelated look, and it renders at reduced resolution.
+ * The Canvas frameloop pauses when the hero scrolls offscreen.
  */
 const fragment = /* glsl */ `
-  precision highp float;
+  precision mediump float;
   varying vec2 vUv;
   uniform float uTime;
   uniform vec2 uRes;
@@ -35,7 +36,7 @@ const fragment = /* glsl */ `
     vec2 f = fract(p);
     vec2 u = f * f * (3.0 - 2.0 * f);
     return mix(
-      mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
+      mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
       mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
       u.y
     );
@@ -43,63 +44,45 @@ const fragment = /* glsl */ `
   float fbm(vec2 p) {
     float v = 0.0;
     float a = 0.5;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 3; i++) {
       v += a * noise(p);
-      p *= 2.02;
+      p *= 2.03;
       a *= 0.5;
     }
     return v;
   }
-  // ordered 8x8 Bayer dither
-  float bayer8(vec2 c) {
-    const float m[64] = float[64](
-      0.,32.,8.,40.,2.,34.,10.,42., 48.,16.,56.,24.,50.,18.,58.,26.,
-      12.,44.,4.,36.,14.,46.,6.,38., 60.,28.,52.,20.,62.,30.,54.,22.,
-      3.,35.,11.,43.,1.,33.,9.,41., 51.,19.,59.,27.,49.,17.,57.,25.,
-      15.,47.,7.,39.,13.,45.,5.,37., 63.,31.,55.,23.,61.,29.,53.,21.
-    );
-    int x = int(mod(c.x, 8.0));
-    int y = int(mod(c.y, 8.0));
-    return m[y * 8 + x] / 64.0;
+  // interleaved gradient noise dither (cheap, no array indexing)
+  float ign(vec2 p) {
+    return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
   }
 
   void main() {
-    vec2 uv = vUv;
-    vec2 p = (uv - 0.5) * vec2(uRes.x / uRes.y, 1.0);
-    float t = uTime * 0.045;
+    vec2 p = (vUv - 0.5) * vec2(uRes.x / uRes.y, 1.0);
+    p += uMouse * 0.06;
+    float t = uTime * 0.05;
 
-    // parallax toward the pointer
-    p += uMouse * 0.08;
+    // single domain warp
+    vec2 q = vec2(fbm(p * 1.4 + t), fbm(p * 1.4 + vec2(4.2, -t)));
+    float f = fbm(p * 1.4 + q * 1.1);
 
-    // domain warp for organic flow
-    vec2 q = vec2(fbm(p * 1.6 + vec2(0.0, t)), fbm(p * 1.6 + vec2(5.2, -t)));
-    vec2 r = vec2(fbm(p * 1.6 + q * 1.4 + vec2(1.7, 9.2) + t * 0.6),
-                  fbm(p * 1.6 + q * 1.4 + vec2(8.3, 2.8) - t * 0.4));
-    float f = fbm(p * 1.6 + r * 1.2);
+    float r = length(p);
+    float core = smoothstep(0.78, 0.0, r);       // contained central glow
+    float energy = core * (0.4 + 0.7 * f);
+    float veins = smoothstep(0.66, 1.0, f) * core;
 
-    // energy veins
-    float vein = smoothstep(0.55, 0.95, f + 0.15 * r.x);
-    float glow = smoothstep(0.2, 0.75, f);
-
-    vec3 base = vec3(0.02, 0.03, 0.04);
+    vec3 base = vec3(0.011, 0.016, 0.02);
     vec3 green = vec3(0.55, 1.0, 0.35);
     vec3 gold = vec3(0.96, 0.70, 0.24);
 
-    vec3 col = base;
-    col += green * glow * 0.30;
-    col += gold * pow(vein, 2.0) * 0.35;
+    vec3 col = base + green * energy * 0.3 + gold * veins * 0.42;
 
-    // faint drifting star sparkle
-    float star = pow(hash(floor(p * 220.0)), 40.0);
-    col += vec3(0.8, 0.95, 0.8) * star * 0.5;
+    float star = pow(hash(floor(p * 170.0)), 55.0);
+    col += vec3(0.8, 0.95, 0.8) * star * 0.35;
 
-    // radial vignette to seat the type
-    float vig = smoothstep(1.15, 0.25, length(p));
-    col *= mix(0.35, 1.0, vig);
-
-    // Bayer dither so the dark gradient never bands
-    float d = (bayer8(gl_FragCoord.xy) - 0.5) / 64.0;
-    col += d * 2.0;
+    // posterized ordered-ish dither for the pixelated gradient look
+    float levels = 14.0;
+    float d = ign(gl_FragCoord.xy);
+    col = floor(col * levels + d) / levels;
 
     gl_FragColor = vec4(max(col, 0.0), 1.0);
   }
@@ -120,18 +103,16 @@ function ShaderPlane() {
     []
   );
 
-  // Mutate through the material's own uniforms (three's live object) so the
-  // frame loop never touches a memoized value directly.
   useFrame((state, delta) => {
     const m = mat.current;
     if (!m) return;
-    m.uniforms.uTime.value += delta;
+    m.uniforms.uTime.value += Math.min(delta, 0.05);
     m.uniforms.uRes.value.set(
       size.width * viewport.dpr,
       size.height * viewport.dpr
     );
     target.current.set(state.pointer.x, state.pointer.y);
-    mouse.current.lerp(target.current, 0.04);
+    mouse.current.lerp(target.current, 0.05);
     m.uniforms.uMouse.value.copy(mouse.current);
   });
 
@@ -148,12 +129,11 @@ function ShaderPlane() {
   );
 }
 
-/** Static dark-energy gradient for reduced-motion, mobile, and pre-hydration. */
 function StaticFallback() {
   return (
     <div
       aria-hidden
-      className="absolute inset-0 bg-[radial-gradient(ellipse_at_55%_45%,rgba(141,255,90,0.12),transparent_58%),radial-gradient(ellipse_at_28%_72%,rgba(245,179,60,0.08),transparent_55%),#05070a]"
+      className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_45%,rgba(141,255,90,0.14),transparent_52%),radial-gradient(ellipse_at_50%_55%,rgba(245,179,60,0.07),transparent_50%),#05070a]"
     />
   );
 }
@@ -162,15 +142,29 @@ export function HeroShader() {
   const reduced = useReducedMotion();
   const coarse = useCoarsePointer();
   const hydrated = useHydrated();
+  const wrap = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(true);
+
+  // Pause the render loop when the hero scrolls offscreen (biggest lag win).
+  useEffect(() => {
+    if (!wrap.current) return;
+    const io = new IntersectionObserver(
+      (entries) => setVisible(entries[0]?.isIntersecting ?? true),
+      { threshold: 0.01 }
+    );
+    io.observe(wrap.current);
+    return () => io.disconnect();
+  }, []);
 
   if (!hydrated || reduced || coarse) {
     return <StaticFallback />;
   }
 
   return (
-    <div aria-hidden className="absolute inset-0">
+    <div ref={wrap} aria-hidden className="absolute inset-0">
       <Canvas
-        dpr={[1, 1.5]}
+        dpr={0.75}
+        frameloop={visible ? "always" : "never"}
         gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}
         style={{ background: "#05070a" }}
       >

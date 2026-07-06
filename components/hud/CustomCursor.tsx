@@ -70,13 +70,13 @@ export function CustomCursor() {
       <div
         ref={dot}
         aria-hidden
-        className="pointer-events-none fixed left-0 top-0 z-[130] -ml-[3px] -mt-[3px] h-1.5 w-1.5 rounded-full bg-[var(--accent)]"
+        className="pointer-events-none fixed left-0 top-0 z-[250] -ml-[3px] -mt-[3px] h-1.5 w-1.5 rounded-full bg-[var(--accent)]"
       />
       <div
         ref={ring}
         aria-hidden
         data-hot="0"
-        className="pointer-events-none fixed left-0 top-0 z-[130] -ml-4 -mt-4 h-8 w-8 rounded-full border border-[var(--accent)]/60 transition-[width,height,opacity] duration-200 data-[hot=1]:h-12 data-[hot=1]:w-12 data-[hot=1]:-ml-6 data-[hot=1]:-mt-6"
+        className="pointer-events-none fixed left-0 top-0 z-[250] -ml-4 -mt-4 h-8 w-8 rounded-full border border-[var(--accent)]/60 transition-[width,height,opacity] duration-200 data-[hot=1]:h-12 data-[hot=1]:w-12 data-[hot=1]:-ml-6 data-[hot=1]:-mt-6"
       />
     </>
   );

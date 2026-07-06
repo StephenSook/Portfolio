@@ -1,31 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Archivo, Chakra_Petch } from "next/font/google";
+import { Fraunces, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SmoothScroll } from "@/components/providers/SmoothScroll";
 import { JsonLd } from "@/components/providers/JsonLd";
 
-const geistSans = Geist({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-});
-
-// Display face for the large brutalist headers.
-const archivo = Archivo({
+// Editorial serif display face for the big statement headings.
+const fraunces = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "600", "700", "800", "900"],
+  axes: ["opsz", "SOFT"],
+  display: "swap",
 });
 
-// Techno HUD face for labels and readouts (Halo feel).
-const chakra = Chakra_Petch({
-  variable: "--font-hud",
+// Clean modern body / UI sans.
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+// Monospace for HUD micro-labels and readouts.
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 const SITE_URL = "https://stephensookra.com";
@@ -73,7 +71,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${chakra.variable} antialiased`}
+        className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${fraunces.variable} antialiased`}
       >
         <a href="#main" className="skip-link">
           Skip to content
