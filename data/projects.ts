@@ -107,8 +107,8 @@ export const projects: Project[] = [
     dates: "Jan 2026 to present",
     stack: ["RAG", "LLM", "Next.js"],
     links: {
-      live: "https://nest-portfolio-pi.vercel.app",
-      note: "App in private beta",
+      live: "https://nest-zeta-nine.vercel.app",
+      note: "Live onboarding",
     },
     gallery: ["/projects/nest/cover.jpeg"],
     caseStudy: {
