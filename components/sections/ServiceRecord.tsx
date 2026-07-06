@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { HudFrame } from "@/components/hud/HudFrame";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { gsap } from "gsap";
+import { Reveal } from "@/components/anim/Reveal";
 import { KineticText } from "@/components/hud/KineticText";
 import { toast } from "@/lib/toast";
+import { useReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { experience } from "@/data/experience";
 import { achievements } from "@/data/achievements";
 import type { Role } from "@/data/types";
 
-const ACCENT = "#4cc2ff";
+const ACCENT = "#8dff5a";
 
 const kindLabel: Record<Role["kind"], string> = {
   founder: "Founder",
@@ -33,29 +35,191 @@ function rankOf(label: string): number {
   return n === 1 || n === 2 || n === 3 ? n : 0;
 }
 
-/** Split a stat label into a big value token and the trailing words. */
-function splitStat(label: string): { value: string; rest: string } {
-  const m = label.match(/^([\d.]+\+?x?)/);
-  if (m) return { value: m[1], rest: label.slice(m[1].length).trim() };
-  return { value: label, rest: "" };
+type StatParts = {
+  pre: string;
+  value: number;
+  decimals: number;
+  suffix: string;
+  post: string;
+};
+
+/** Pull the first number out of a stat label so it can count up on scroll. */
+function parseStat(label: string): StatParts | null {
+  const m = label.match(/^(.*?)(\d+(?:\.\d+)?)([+x]?)\s*(.*)$/);
+  if (!m) return null;
+  const [, pre, num, suffix, post] = m;
+  return {
+    pre: pre.trim(),
+    value: Number(num),
+    decimals: num.includes(".") ? (num.split(".")[1]?.length ?? 0) : 0,
+    suffix,
+    post: post.trim(),
+  };
+}
+
+/**
+ * Counts up to a target when scrolled into view. Drives DOM text through a ref
+ * inside a requestAnimationFrame loop (no setState in the effect). Under reduced
+ * motion the effect no-ops and the final value stays rendered.
+ */
+function CountUp({
+  value,
+  decimals = 0,
+  suffix = "",
+}: {
+  value: number;
+  decimals?: number;
+  suffix?: string;
+}) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const reduced = useReducedMotion();
+  const final = value.toFixed(decimals) + suffix;
+
+  useEffect(() => {
+    if (reduced) return;
+    const el = ref.current;
+    if (!el) return;
+    let raf = 0;
+    let started = 0;
+    const duration = 1400;
+
+    const step = (t: number) => {
+      if (!started) started = t;
+      const p = Math.min((t - started) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = (value * eased).toFixed(decimals) + suffix;
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          el.textContent = (0).toFixed(decimals) + suffix;
+          raf = requestAnimationFrame(step);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.4 }
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [reduced, value, decimals, suffix]);
+
+  return <span ref={ref}>{final}</span>;
+}
+
+/** Vertical timeline rail that draws itself downward on scroll into view. */
+function DrawRail() {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    if (reduced) return;
+    const el = ref.current;
+    if (!el) return;
+    gsap.set(el, { scaleY: 0, transformOrigin: "top center" });
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          gsap.to(el, { scaleY: 1, duration: 1.6, ease: "power3.out" });
+          io.disconnect();
+        }
+      },
+      { threshold: 0 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [reduced]);
+
+  return (
+    <span
+      ref={ref}
+      aria-hidden="true"
+      className="absolute left-2 top-1 bottom-1 w-px bg-gradient-to-b from-[var(--accent)] via-[var(--line-strong)] to-transparent"
+    />
+  );
+}
+
+/** Reveals its direct children in a rising cascade on scroll (reduced-safe). */
+function Stagger({
+  children,
+  className,
+  y = 26,
+}: {
+  children: ReactNode;
+  className?: string;
+  y?: number;
+}) {
+  const ref = useRef<HTMLUListElement | null>(null);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    if (reduced) return;
+    const el = ref.current;
+    if (!el) return;
+    const targets = Array.from(el.children) as HTMLElement[];
+    if (!targets.length) return;
+    gsap.set(targets, { opacity: 0, y, force3D: true });
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          gsap.to(targets, {
+            opacity: 1,
+            y: 0,
+            duration: 0.85,
+            ease: "power4.out",
+            stagger: 0.08,
+            force3D: true,
+          });
+          io.disconnect();
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [reduced, y]);
+
+  return (
+    <ul ref={ref} className={cn(className)}>
+      {children}
+    </ul>
+  );
+}
+
+function SectionRule({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-4">
+      <span className="hud-label whitespace-nowrap text-[var(--muted)]">
+        {children}
+      </span>
+      <span aria-hidden="true" className="h-px flex-1 bg-[var(--line)]" />
+    </div>
+  );
 }
 
 function Medal({ color }: { color: string }) {
   return (
     <svg
-      width="42"
-      height="42"
-      viewBox="0 0 40 40"
+      width="44"
+      height="44"
+      viewBox="0 0 44 44"
       fill="none"
       aria-hidden="true"
       className="shrink-0"
+      style={{
+        filter: `drop-shadow(0 0 9px color-mix(in srgb, ${color} 42%, transparent))`,
+      }}
     >
-      <path d="M13 3 L20 15 L14 19 Z" fill={color} opacity="0.5" />
-      <path d="M27 3 L20 15 L26 19 Z" fill={color} opacity="0.3" />
-      <circle cx="20" cy="25" r="11" fill="none" stroke={color} strokeWidth="2" />
-      <circle cx="20" cy="25" r="6.5" fill={color} opacity="0.16" />
+      <path d="M15 4 L22 18 L16 22 Z" fill={color} opacity="0.55" />
+      <path d="M29 4 L22 18 L28 22 Z" fill={color} opacity="0.32" />
+      <circle cx="22" cy="28" r="12" fill="none" stroke={color} strokeWidth="2" />
+      <circle cx="22" cy="28" r="7" fill={color} opacity="0.14" />
       <path
-        d="M20 19.6 l1.7 3.4 3.7.5 -2.7 2.6 .7 3.7 -3.4 -1.8 -3.4 1.8 .7 -3.7 -2.7 -2.6 3.7 -.5 Z"
+        d="M22 22 l1.8 3.7 4 .5 -3 2.8 .8 4 -3.6 -1.9 -3.6 1.9 .8 -4 -3 -2.8 4 -.5 Z"
         fill={color}
       />
     </svg>
@@ -139,10 +303,12 @@ export default function ServiceRecord() {
       id="service-record"
       ref={sectionRef}
       className="relative mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
-      style={{ ["--accent" as string]: ACCENT } as React.CSSProperties}
+      style={{ ["--accent"]: ACCENT } as CSSProperties}
     >
       {/* Header */}
-      <span className="hud-label">EXPERIENCE // SERVICE RECORD</span>
+      <span className="hud-label text-[var(--muted)]">
+        Experience // Service record
+      </span>
       <div className="mt-3 overflow-hidden">
         <KineticText
           as="h2"
@@ -151,79 +317,77 @@ export default function ServiceRecord() {
           className="font-display text-5xl text-[var(--text)] md:text-7xl"
         />
       </div>
-      <p className="mt-5 max-w-xl text-sm leading-relaxed text-[var(--muted)]">
-        Field history and earned commendations, pulled straight from the record.
+      <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted)] md:text-xl">
+        Field history and the commendations that came with it, pulled straight
+        from the record.
       </p>
 
       {/* Part 1: Deployment log timeline */}
-      <div className="mt-16 md:mt-20">
-        <div className="flex items-center gap-3">
-          <span className="hud-label">DEPLOYMENT LOG</span>
-          <span aria-hidden="true" className="h-px flex-1 bg-[var(--line)]" />
-        </div>
+      <div className="mt-16 md:mt-24">
+        <SectionRule>Deployment log</SectionRule>
 
-        <div className="relative mt-8">
-          <span
-            aria-hidden="true"
-            className="absolute left-2 top-1 bottom-2 w-px bg-gradient-to-b from-[var(--accent)]/50 via-[var(--line-strong)] to-transparent"
-          />
-          <ol className="space-y-6">
+        <div className="relative mt-10">
+          <DrawRail />
+          <ol className="space-y-9 md:space-y-12">
             {roles.map((role) => {
               const founder = role.kind === "founder";
               return (
-                <li key={role.org} className="relative pl-9 md:pl-11">
+                <li key={role.org} className="group relative pl-11 md:pl-14">
                   <span
                     aria-hidden="true"
-                    className="absolute left-[2px] top-4 h-3 w-3 rounded-full border-2"
+                    className="absolute left-[1px] top-1.5 z-10 h-3.5 w-3.5 rounded-full border-2 transition-transform duration-300 group-hover:scale-125"
                     style={{
                       borderColor: founder ? "var(--accent)" : "var(--line-strong)",
-                      background: "var(--bg)",
+                      background: founder ? "var(--accent)" : "var(--bg)",
                       boxShadow: founder
-                        ? "0 0 14px color-mix(in srgb, var(--accent) 65%, transparent)"
+                        ? "0 0 16px color-mix(in srgb, var(--accent) 70%, transparent)"
                         : undefined,
                     }}
                   />
-                  <HudFrame
+                  <Reveal
                     className={cn(
-                      "p-5 md:p-6",
+                      "transition-colors duration-300",
                       founder &&
-                        "border-[var(--accent)]/40 bg-[color-mix(in_srgb,var(--accent)_5%,var(--panel))] shadow-[0_0_36px_-14px_var(--accent)]"
+                        "rounded-sm border-l-2 border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] p-5 md:p-6"
                     )}
                   >
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <span
                         className="hud-label"
                         style={{ color: founder ? "var(--accent)" : "var(--muted)" }}
                       >
-                        {kindLabel[role.kind]}
+                        {founder ? "★ Founder" : kindLabel[role.kind]}
                       </span>
-                      <span className="font-hud text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                      <span className="ml-auto font-hud text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
                         {role.period}
                       </span>
                     </div>
-                    <h3 className="mt-2 font-display text-2xl text-[var(--text)] md:text-3xl">
+                    <h3 className="mt-2 font-display text-3xl text-[var(--text)] transition-colors duration-300 group-hover:text-[var(--accent)] md:text-4xl">
                       {role.org}
                     </h3>
-                    <p className="mt-1 text-sm text-[var(--text)]/90">
+                    <p className="mt-1.5 text-sm text-[var(--text)]/85">
                       {role.title}{" "}
-                      <span className="text-[var(--muted)]">{"// "}{role.location}</span>
+                      <span className="text-[var(--muted)]">
+                        {"// "}
+                        {role.location}
+                      </span>
                     </p>
-                    <ul className="mt-4 space-y-2">
+                    <ul className="mt-4 space-y-2.5">
                       {role.bullets.map((bullet, j) => (
                         <li
                           key={j}
-                          className="flex gap-2.5 text-sm leading-relaxed text-[var(--muted)]"
+                          className="flex gap-3 text-sm leading-relaxed text-[var(--muted)]"
                         >
                           <span
                             aria-hidden="true"
-                            className="mt-2 h-1 w-1 shrink-0 rounded-full"
+                            className="mt-[7px] h-1 w-1 shrink-0 rounded-full"
                             style={{ background: "var(--accent)" }}
                           />
                           <span>{bullet}</span>
                         </li>
                       ))}
                     </ul>
-                  </HudFrame>
+                  </Reveal>
                 </li>
               );
             })}
@@ -231,92 +395,104 @@ export default function ServiceRecord() {
         </div>
       </div>
 
-      {/* Part 2: Trophy case */}
-      <div className="mt-16 md:mt-20">
-        <div className="flex items-center gap-3">
-          <span className="hud-label">TROPHY CASE</span>
-          <span aria-hidden="true" className="h-px flex-1 bg-[var(--line)]" />
-        </div>
+      {/* Part 2: Commendations */}
+      <div className="mt-16 md:mt-24">
+        <SectionRule>Commendations</SectionRule>
 
-        {/* Wins as medal cards */}
-        <span className="mt-8 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-          Podium Finishes
+        {/* Wins as medals */}
+        <span className="mt-9 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+          Podium finishes
         </span>
-        <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Stagger className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {wins.map((w) => {
             const meta = medalMeta[rankOf(w.label)];
             return (
-              <li key={w.label}>
-                <HudFrame className="h-full p-5" accent={meta.color}>
-                  <div className="flex items-start gap-4">
+              <li
+                key={w.label}
+                className="group"
+                style={{ ["--tier"]: meta.color } as CSSProperties}
+              >
+                <div className="flex h-full items-start gap-4 rounded-sm border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--tier)] hover:shadow-[0_0_34px_-14px_var(--tier)]">
+                  <span className="transition-transform duration-300 group-hover:scale-110">
                     <Medal color={meta.color} />
-                    <div className="min-w-0">
-                      <span
-                        className="font-hud text-[10px] uppercase tracking-[0.22em]"
-                        style={{ color: meta.color }}
-                      >
-                        {meta.tier}
-                      </span>
-                      <p className="mt-1 font-display text-base leading-tight text-[var(--text)]">
-                        {w.label}
-                      </p>
-                      <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
-                        {w.detail}
-                      </p>
-                    </div>
+                  </span>
+                  <div className="min-w-0">
+                    <span
+                      className="font-hud text-[10px] uppercase tracking-[0.22em]"
+                      style={{ color: meta.color }}
+                    >
+                      {meta.tier}
+                    </span>
+                    <p className="mt-1 font-display text-base leading-snug text-[var(--text)]">
+                      {w.label}
+                    </p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
+                      {w.detail}
+                    </p>
                   </div>
-                </HudFrame>
+                </div>
               </li>
             );
           })}
-        </ul>
+        </Stagger>
 
-        {/* Stats as big number tiles */}
-        <span className="mt-10 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-          By The Numbers
+        {/* Stats as big count-up numbers */}
+        <span className="mt-12 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+          By the numbers
         </span>
-        <ul className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stagger className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map((s) => {
-            const { value, rest } = splitStat(s.label);
-            const big = value.length <= 4;
+            const parts = parseStat(s.label);
             return (
-              <li key={s.label}>
-                <HudFrame className="h-full p-5">
-                  <div
-                    className={cn(
-                      "font-display leading-none text-[var(--accent)]",
-                      big ? "text-5xl md:text-6xl" : "text-2xl md:text-3xl"
-                    )}
+              <li key={s.label} className="group">
+                <div className="flex h-full flex-col rounded-sm border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--accent)] hover:shadow-[0_0_34px_-14px_var(--accent)]">
+                  {parts?.pre && (
+                    <span className="font-hud text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                      {parts.pre}
+                    </span>
+                  )}
+                  <span
+                    className="mt-1 font-display text-4xl leading-none text-[var(--accent)] md:text-5xl"
                     style={{
                       textShadow:
                         "0 0 26px color-mix(in srgb, var(--accent) 40%, transparent)",
                     }}
                   >
-                    {value}
-                  </div>
-                  {rest && (
-                    <div className="mt-2 font-hud text-[11px] uppercase leading-snug tracking-[0.14em] text-[var(--text)]/80">
-                      {rest}
-                    </div>
+                    {parts ? (
+                      <CountUp
+                        value={parts.value}
+                        decimals={parts.decimals}
+                        suffix={parts.suffix}
+                      />
+                    ) : (
+                      s.label
+                    )}
+                  </span>
+                  {parts?.post && (
+                    <span className="mt-2.5 text-sm leading-snug text-[var(--text)]/80">
+                      {parts.post}
+                    </span>
                   )}
-                  <div className="mt-2 text-xs text-[var(--muted)]">{s.detail}</div>
-                </HudFrame>
+                  <span className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
+                    {s.detail}
+                  </span>
+                </div>
               </li>
             );
           })}
-        </ul>
+        </Stagger>
 
         {/* Certs as clearance chips */}
-        <span className="mt-10 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+        <span className="mt-12 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
           Certifications
         </span>
-        <ul className="mt-4 flex flex-wrap gap-2.5">
+        <Stagger className="mt-4 flex flex-wrap gap-2.5" y={16}>
           {certs.map((c) => (
             <li key={c.label}>
-              <div className="group inline-flex items-center gap-2.5 rounded-sm border border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--panel)_60%,transparent)] px-3 py-2 transition-colors duration-300 hover:border-[var(--accent)]">
+              <div className="group inline-flex items-center gap-2.5 rounded-sm border border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] px-3.5 py-2.5 transition-colors duration-300 hover:border-[var(--accent)]">
                 <ClearanceIcon />
                 <div className="leading-tight">
-                  <span className="block font-hud text-xs uppercase tracking-[0.1em] text-[var(--text)]">
+                  <span className="block font-hud text-xs uppercase tracking-[0.08em] text-[var(--text)]">
                     {c.label}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
@@ -326,7 +502,7 @@ export default function ServiceRecord() {
               </div>
             </li>
           ))}
-        </ul>
+        </Stagger>
       </div>
     </section>
   );
