@@ -1,13 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { AimTrainer } from "@/components/lab/AimTrainer";
-import { HeroScene } from "@/components/three/HeroScene";
+import { HeroShader } from "@/components/three/HeroShader";
 import { KineticText } from "@/components/hud/KineticText";
 
 export const metadata: Metadata = {
   title: "Lab",
   description:
-    "A playground of interactive experiments from Stephen Sookra. Play a Spartan aim drill and poke at a live WebGL Forerunner ring.",
+    "A playground of interactive experiments from Stephen Sookra. Play a Spartan aim drill and drag a live WebGL energy field.",
 };
 
 export default function LabPage() {
@@ -52,15 +52,15 @@ export default function LabPage() {
       <section className="mt-16">
         <div className="mb-4 flex items-baseline justify-between">
           <h2 className="font-display text-2xl text-[var(--text)]">
-            02 · Forerunner Artifact
+            02 · Energy Field
           </h2>
           <span className="hud-label">live WebGL</span>
         </div>
         <div className="hud-frame relative h-[440px] overflow-hidden rounded-sm">
-          <HeroScene />
+          <HeroShader />
           <div className="pointer-events-none absolute bottom-4 left-4">
             <span className="hud-label">
-              three.js // energy ring, starfield, orbiting particles
+              GLSL fragment shader // domain-warped noise, Bayer dither, mouse-reactive
             </span>
           </div>
         </div>

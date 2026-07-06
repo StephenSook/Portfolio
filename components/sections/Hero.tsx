@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
-import { HeroScene } from "@/components/three/HeroScene";
+import { HeroShader } from "@/components/three/HeroShader";
 import { KineticText } from "@/components/hud/KineticText";
 import { MagneticButton } from "@/components/hud/MagneticButton";
 import { useReducedMotion } from "@/lib/motion";
@@ -30,48 +29,68 @@ function RoleRotator() {
   );
 }
 
+function Corner({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute h-6 w-6 border-[var(--accent)]/50 ${className}`}
+    />
+  );
+}
+
 export function Hero() {
   return (
     <section
       id="top"
       className="relative flex min-h-svh w-full items-center overflow-hidden"
     >
-      <HeroScene />
-      {/* Legibility vignette over the canvas. */}
+      <HeroShader />
+      {/* soft floor + edge vignette to seat the type */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-[linear-gradient(to_right,var(--bg)_0%,rgba(5,7,10,0.72)_42%,transparent_78%)]"
-      />
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-[linear-gradient(to_top,var(--bg),transparent_35%)]"
+        className="absolute inset-0 bg-[linear-gradient(to_top,var(--bg),transparent_45%)]"
       />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-10 px-6 md:grid-cols-[1.3fr_0.7fr]">
-        <div>
-          <p className="hud-label mb-5 flex items-center gap-2">
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
-            System online // {profile.handle}
-          </p>
+      {/* operator HUD frame */}
+      <Corner className="left-5 top-5 border-l-2 border-t-2" />
+      <Corner className="right-5 top-5 border-r-2 border-t-2" />
+      <Corner className="bottom-5 left-5 border-b-2 border-l-2" />
+      <Corner className="bottom-5 right-5 border-b-2 border-r-2" />
 
-          <h1 className="font-display text-6xl leading-[0.9] text-[var(--text)] sm:text-7xl md:text-8xl">
-            <KineticText text="STEPHEN" as="span" className="block" />
-            <KineticText
-              text="SOOKRA"
-              as="span"
-              className="block text-[var(--accent)]"
-              delay={0.15}
-            />
-          </h1>
+      {/* top status bar */}
+      <div className="absolute inset-x-0 top-6 z-10 mx-auto flex max-w-6xl items-center justify-between px-8 md:px-10">
+        <span className="hud-label flex items-center gap-2">
+          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
+          System online // {profile.handle}
+        </span>
+        <span className="hud-label hidden text-[var(--muted)] sm:block">
+          {profile.location} · 33.75N
+        </span>
+      </div>
 
-          <p className="mt-6 font-hud text-lg text-[var(--muted)] md:text-xl">
-            <RoleRotator />
-          </p>
-          <p className="mt-3 max-w-md text-sm text-[var(--muted)] md:text-base">
-            {profile.tagline}
-          </p>
+      {/* hero content */}
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-6">
+        <p className="hud-label mb-5 text-[var(--muted)]">Portfolio // 2026</p>
+        <h1 className="font-display text-[19vw] leading-[0.86] text-[var(--text)] sm:text-[16vw] md:text-[13rem]">
+          <KineticText text="STEPHEN" as="span" className="block" />
+          <KineticText
+            text="SOOKRA"
+            as="span"
+            className="block text-[var(--accent)]"
+            delay={0.12}
+          />
+        </h1>
 
-          <div className="mt-9 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="font-hud text-lg text-[var(--muted)] md:text-xl">
+              <RoleRotator />
+            </p>
+            <p className="mt-2 max-w-md text-sm text-[var(--muted)] md:text-base">
+              {profile.tagline}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
             <MagneticButton
               href="#work"
               className="!border-[var(--accent)] !text-[var(--accent)]"
@@ -81,24 +100,10 @@ export function Hero() {
             <MagneticButton href="#resume">Dossier</MagneticButton>
           </div>
         </div>
-
-        {/* Player card */}
-        <div className="relative mx-auto hidden w-full max-w-[300px] md:block">
-          <div className="hud-frame overflow-hidden rounded-sm">
-            <Image
-              src="/personal/player-card.png"
-              alt="Stephen Sookra as a UNSC operator player-select card"
-              width={600}
-              height={800}
-              priority
-              className="h-auto w-full"
-            />
-          </div>
-        </div>
       </div>
 
-      {/* Scroll cue */}
-      <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2">
+      {/* scroll cue */}
+      <div className="absolute bottom-7 left-1/2 z-10 -translate-x-1/2">
         <span className="hud-label flex flex-col items-center gap-2 text-[var(--muted)]">
           Scroll
           <span className="h-8 w-px animate-pulse bg-[var(--muted)]" />

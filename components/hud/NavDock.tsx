@@ -9,7 +9,7 @@ const ITEMS = [
   { id: "arsenal", label: "Arsenal" },
   { id: "work", label: "Missions" },
   { id: "service-record", label: "Record" },
-  { id: "bench", label: "Bench" },
+  { id: "bench", label: "Lineup" },
   { id: "resume", label: "Dossier" },
   { id: "contact", label: "Comms" },
 ];

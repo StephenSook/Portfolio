@@ -4,9 +4,10 @@ import About from "@/components/sections/About";
 import Arsenal from "@/components/sections/Arsenal";
 import Missions from "@/components/sections/Missions";
 import ServiceRecord from "@/components/sections/ServiceRecord";
-import Bench from "@/components/sections/Bench";
+import { InterestsReel } from "@/components/sections/InterestsReel";
 import { Dossier } from "@/components/sections/Dossier";
 import Comms from "@/components/sections/Comms";
+import { Reveal } from "@/components/anim/Reveal";
 import { NavDock } from "@/components/hud/NavDock";
 import { CustomCursor } from "@/components/hud/CustomCursor";
 import { Scanline } from "@/components/hud/Scanline";
@@ -28,13 +29,13 @@ export default function Home() {
       <main id="main">
         <Hero />
         <div className="relative z-10 bg-[var(--bg)]">
-          <About />
-          <Arsenal />
-          <Missions />
-          <ServiceRecord />
-          <Bench />
-          <Dossier />
-          <Comms />
+          <Reveal><About /></Reveal>
+          <Reveal><Arsenal /></Reveal>
+          <Reveal><Missions /></Reveal>
+          <Reveal><ServiceRecord /></Reveal>
+          <InterestsReel />
+          <Reveal><Dossier /></Reveal>
+          <Reveal><Comms /></Reveal>
         </div>
       </main>
     </>
