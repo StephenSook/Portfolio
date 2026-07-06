@@ -2,7 +2,7 @@ import { Boot } from "@/components/sections/Boot";
 import { Hero } from "@/components/sections/Hero";
 import About from "@/components/sections/About";
 import Arsenal from "@/components/sections/Arsenal";
-import Missions from "@/components/sections/Missions";
+import { ProjectsCarousel } from "@/components/sections/ProjectsCarousel";
 import ServiceRecord from "@/components/sections/ServiceRecord";
 import { InterestsReel } from "@/components/sections/InterestsReel";
 import { Dossier } from "@/components/sections/Dossier";
@@ -31,7 +31,7 @@ export default function Home() {
         <div className="relative z-10 bg-[var(--bg)]">
           <Reveal><About /></Reveal>
           <Reveal><Arsenal /></Reveal>
-          <Reveal><Missions /></Reveal>
+          <ProjectsCarousel />
           <Reveal><ServiceRecord /></Reveal>
           <InterestsReel />
           <Reveal><Dossier /></Reveal>
