@@ -9,7 +9,6 @@ import { HudFrame } from "@/components/hud/HudFrame";
 import { KineticText } from "@/components/hud/KineticText";
 import { MagneticButton } from "@/components/hud/MagneticButton";
 import { useCoarsePointer, useReducedMotion } from "@/lib/motion";
-import { cn } from "@/lib/utils";
 
 const featured = projects.filter((p) => p.tier === "featured");
 const archivedCount = projects.filter((p) => p.tier === "archive").length;

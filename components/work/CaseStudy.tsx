@@ -152,6 +152,7 @@ export function CaseStudy({ project }: { project: Project }) {
                 alt={`${project.name} interface, view ${i + 1}`}
                 width={1440}
                 height={900}
+                sizes="(max-width: 1024px) 100vw, 976px"
                 className="h-auto w-full rounded-sm"
               />
             </HudFrame>

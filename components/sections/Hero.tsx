@@ -1,11 +1,34 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { HeroShader } from "@/components/three/HeroShader";
 import { KineticText } from "@/components/hud/KineticText";
 import { MagneticButton } from "@/components/hud/MagneticButton";
 import { useReducedMotion } from "@/lib/motion";
 import { profile } from "@/data/profile";
+
+/**
+ * SSR-safe static energy backdrop shown until the WebGL chunk loads. Mirrors
+ * HeroShader's own StaticFallback exactly so the swap is seamless and there is
+ * never a second stacked gradient layer. Defined locally (no three.js import)
+ * so the heavy WebGL deps stay fully code-split from the initial route bundle.
+ */
+function HeroBackdrop() {
+  return (
+    <div
+      aria-hidden
+      className="absolute inset-0 bg-[radial-gradient(ellipse_at_55%_45%,rgba(141,255,90,0.12),transparent_58%),radial-gradient(ellipse_at_28%_72%,rgba(245,179,60,0.08),transparent_55%),#05070a]"
+    />
+  );
+}
+
+// Code-split the WebGL hero (three.js + @react-three/fiber, ~heavy) out of the
+// initial route bundle. It only renders after hydration and is purely
+// decorative, so it must never sit in the first-paint critical path.
+const HeroShader = dynamic(
+  () => import("@/components/three/HeroShader").then((m) => m.HeroShader),
+  { ssr: false, loading: () => <HeroBackdrop /> }
+);
 
 const ROLES = [
   "Software Engineer",
@@ -23,7 +46,7 @@ function RoleRotator() {
     return () => clearInterval(id);
   }, [reduced]);
   return (
-    <span className="font-hud text-[var(--accent)]" aria-live="polite">
+    <span className="font-hud text-[var(--accent)]">
       {ROLES[i]}
     </span>
   );
