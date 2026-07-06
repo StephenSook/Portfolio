@@ -1,0 +1,7 @@
+cortiz code
+dave code
+.playwright-mcp
+/cortiz-*.jpeg
+/dave-*.jpeg
+*-snapshot.md
+docs
