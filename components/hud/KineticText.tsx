@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -13,13 +12,15 @@ type Props = {
   className?: string;
   /** Delay before the reveal starts, in seconds. */
   delay?: number;
-  /** Trigger on scroll into view rather than on mount. */
+  /** Reveal when scrolled into view rather than on mount. */
   onScroll?: boolean;
 };
 
 /**
- * Cortiz-style split reveal. The real text stays accessible via aria-label
- * on the wrapper; the animated per-unit spans are aria-hidden.
+ * Split reveal. The real text stays accessible via aria-label; the animated
+ * per-unit spans are aria-hidden. Content is visible by default (no JS / no
+ * observer) and only hides-then-reveals when the animation can actually run,
+ * so nothing is ever permanently hidden behind a scroll trigger.
  */
 export function KineticText({
   text,
@@ -35,29 +36,41 @@ export function KineticText({
   }, []);
   const reduced = useReducedMotion();
 
-  const units =
-    splitBy === "word" ? text.split(/(\s+)/) : Array.from(text);
+  const units = splitBy === "word" ? text.split(/(\s+)/) : Array.from(text);
 
   useEffect(() => {
     if (reduced || !ref.current) return;
-    const spans = ref.current.querySelectorAll("[data-unit]");
-    if (!spans.length) return;
+    const inner = ref.current.querySelectorAll<HTMLElement>("[data-unit] > span");
+    if (!inner.length) return;
 
-    gsap.registerPlugin(ScrollTrigger);
-    const ctx = gsap.context(() => {
-      gsap.from(spans, {
-        yPercent: 115,
-        opacity: 0,
+    // Only now (JS present) hide the units, then reveal.
+    gsap.set(inner, { yPercent: 115, opacity: 0 });
+    const reveal = () =>
+      gsap.to(inner, {
+        yPercent: 0,
+        opacity: 1,
         duration: 0.7,
         ease: "power3.out",
         stagger: 0.02,
         delay,
-        scrollTrigger: onScroll
-          ? { trigger: ref.current, start: "top 85%", once: true }
-          : undefined,
       });
-    }, ref);
-    return () => ctx.revert();
+
+    if (!onScroll) {
+      reveal();
+      return;
+    }
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          reveal();
+          io.disconnect();
+        }
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -10% 0px" }
+    );
+    io.observe(ref.current);
+    return () => io.disconnect();
   }, [reduced, delay, onScroll, text]);
 
   const Tag = as;

@@ -21,3 +21,15 @@ export const useReducedMotion = makeMediaHook("(prefers-reduced-motion: reduce)"
 
 /** True on touch / coarse-pointer devices (skip custom cursor, heavy 3D). */
 export const useCoarsePointer = makeMediaHook("(pointer: coarse)");
+
+/**
+ * False during SSR and the first client render, true afterward. Use to gate
+ * client-only rendering (WebGL canvas, storage reads) without setState-in-effect.
+ */
+export function useHydrated(): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+}
