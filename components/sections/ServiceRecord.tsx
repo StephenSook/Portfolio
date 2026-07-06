@@ -1,15 +1,22 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+import Image from "next/image";
 import { gsap } from "gsap";
 import { Reveal } from "@/components/anim/Reveal";
 import { KineticText } from "@/components/hud/KineticText";
 import { toast } from "@/lib/toast";
-import { useReducedMotion } from "@/lib/motion";
+import { useCoarsePointer, useReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { experience } from "@/data/experience";
 import { achievements } from "@/data/achievements";
-import type { Role } from "@/data/types";
+import type { Achievement, Role } from "@/data/types";
 
 const ACCENT = "#8dff5a";
 
@@ -20,11 +27,11 @@ const kindLabel: Record<Role["kind"], string> = {
   teaching: "Teaching",
 };
 
-const medalMeta: Record<number, { color: string; tier: string }> = {
-  1: { color: "var(--forerunner)", tier: "Gold" },
-  2: { color: "#c8d2dc", tier: "Silver" },
-  3: { color: "#d08b52", tier: "Bronze" },
-  0: { color: "var(--accent)", tier: "Commendation" },
+const medalArt: Record<number, { src: string; color: string; tier: string }> = {
+  1: { src: "/brand/medals/gold.png", color: "var(--forerunner)", tier: "Gold" },
+  2: { src: "/brand/medals/silver.png", color: "#c8d2dc", tier: "Silver" },
+  3: { src: "/brand/medals/bronze.png", color: "#d08b52", tier: "Bronze" },
+  0: { src: "/brand/medals/gold.png", color: "var(--forerunner)", tier: "Gold" },
 };
 
 /** Leading rank digit of a win label ("1st, ..." -> 1). 0 when none. */
@@ -201,28 +208,146 @@ function SectionRule({ children }: { children: ReactNode }) {
   );
 }
 
-function Medal({ color }: { color: string }) {
+/**
+ * A single podium finish rendered as a premium, mouse-reactive medal card.
+ * The card tilts toward the pointer, with the transform mutated directly on the
+ * ref inside the event handler (never through React state), and the medal art
+ * floats on a gsap loop. Under reduced motion or on coarse pointers it renders
+ * fully static. The pure-black medal background drops out via mix-blend-lighten.
+ */
+function MedalCard({ win, index }: { win: Achievement; index: number }) {
+  const tiltRef = useRef<HTMLDivElement | null>(null);
+  const floatRef = useRef<HTMLDivElement | null>(null);
+  const reduced = useReducedMotion();
+  const coarse = useCoarsePointer();
+  const interactive = !reduced && !coarse;
+  const art = medalArt[rankOf(win.label)] ?? medalArt[0];
+
+  // Gentle idle float on the medal art (transform-only, auto-pauses offscreen).
+  useEffect(() => {
+    if (reduced || coarse) return;
+    const el = floatRef.current;
+    if (!el) return;
+    const tween = gsap.to(el, {
+      y: -9,
+      duration: 2.8,
+      ease: "sine.inOut",
+      repeat: -1,
+      yoyo: true,
+    });
+    tween.seek((index % 3) * 0.9); // desync neighbouring medals
+    return () => {
+      tween.kill();
+    };
+  }, [reduced, coarse, index]);
+
+  const handleMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = tiltRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5;
+    const py = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transform = `rotateX(${(py * -14).toFixed(2)}deg) rotateY(${(px * 16).toFixed(2)}deg)`;
+  };
+
+  const handleLeave = () => {
+    const el = tiltRef.current;
+    if (el) el.style.transform = "rotateX(0deg) rotateY(0deg)";
+  };
+
   return (
-    <svg
-      width="44"
-      height="44"
-      viewBox="0 0 44 44"
-      fill="none"
+    <li className="group [perspective:1100px]">
+      <div
+        ref={tiltRef}
+        onPointerMove={interactive ? handleMove : undefined}
+        onPointerLeave={interactive ? handleLeave : undefined}
+        style={{ ["--tier"]: art.color } as CSSProperties}
+        className="relative flex h-full flex-col items-center overflow-hidden rounded-md border border-[var(--line)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel)_90%,transparent),var(--bg))] px-6 pb-6 pt-8 text-center transition-transform duration-200 ease-out will-change-transform hover:border-[color-mix(in_srgb,var(--tier)_55%,var(--line-strong))]"
+      >
+        {/* top hairline lights up on hover */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-px opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, var(--tier), transparent)",
+          }}
+        />
+        {/* glow pool behind the medal, intensifies on hover */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-7 h-40 w-40 -translate-x-1/2 rounded-full opacity-30 blur-2xl transition-opacity duration-500 group-hover:opacity-80"
+          style={{
+            background:
+              "radial-gradient(closest-side, color-mix(in srgb, var(--tier) 60%, transparent), transparent)",
+          }}
+        />
+        <div ref={floatRef} className="relative">
+          <Image
+            src={art.src}
+            alt=""
+            width={200}
+            height={244}
+            sizes="(max-width: 640px) 42vw, 190px"
+            className="h-auto w-36 mix-blend-lighten sm:w-44"
+            style={{
+              filter:
+                "drop-shadow(0 10px 16px color-mix(in srgb, var(--tier) 32%, transparent))",
+            }}
+          />
+        </div>
+        <span
+          className="mt-4 font-hud text-[10px] uppercase tracking-[0.28em]"
+          style={{ color: "var(--tier)" }}
+        >
+          {art.tier}
+        </span>
+        <p className="mt-2 font-display text-base leading-snug text-[var(--text)]">
+          {win.label}
+        </p>
+        <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+          {win.detail}
+        </p>
+      </div>
+    </li>
+  );
+}
+
+/** Thin accent bar under a stat that draws in from the left on scroll. */
+function DrawBar({ color }: { color: string }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    if (reduced) return;
+    const el = ref.current;
+    if (!el) return;
+    gsap.set(el, { scaleX: 0, transformOrigin: "left center" });
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          gsap.to(el, {
+            scaleX: 1,
+            duration: 1.1,
+            ease: "power3.out",
+            delay: 0.15,
+          });
+          io.disconnect();
+        }
+      },
+      { threshold: 0.4 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [reduced]);
+
+  return (
+    <span
+      ref={ref}
       aria-hidden="true"
-      className="shrink-0"
-      style={{
-        filter: `drop-shadow(0 0 9px color-mix(in srgb, ${color} 42%, transparent))`,
-      }}
-    >
-      <path d="M15 4 L22 18 L16 22 Z" fill={color} opacity="0.55" />
-      <path d="M29 4 L22 18 L28 22 Z" fill={color} opacity="0.32" />
-      <circle cx="22" cy="28" r="12" fill="none" stroke={color} strokeWidth="2" />
-      <circle cx="22" cy="28" r="7" fill={color} opacity="0.14" />
-      <path
-        d="M22 22 l1.8 3.7 4 .5 -3 2.8 .8 4 -3.6 -1.9 -3.6 1.9 .8 -4 -3 -2.8 4 -.5 Z"
-        fill={color}
-      />
-    </svg>
+      className="mt-3 block h-[2px] w-full origin-left rounded-full"
+      style={{ background: `linear-gradient(90deg, ${color}, transparent)` }}
+    />
   );
 }
 
@@ -399,63 +524,40 @@ export default function ServiceRecord() {
       <div className="mt-16 md:mt-24">
         <SectionRule>Commendations</SectionRule>
 
-        {/* Wins as medals */}
+        {/* Wins as an interactive medal showcase */}
         <span className="mt-9 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
           Podium finishes
         </span>
-        <Stagger className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {wins.map((w) => {
-            const meta = medalMeta[rankOf(w.label)];
-            return (
-              <li
-                key={w.label}
-                className="group"
-                style={{ ["--tier"]: meta.color } as CSSProperties}
-              >
-                <div className="flex h-full items-start gap-4 rounded-sm border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--tier)] hover:shadow-[0_0_34px_-14px_var(--tier)]">
-                  <span className="transition-transform duration-300 group-hover:scale-110">
-                    <Medal color={meta.color} />
-                  </span>
-                  <div className="min-w-0">
-                    <span
-                      className="font-hud text-[10px] uppercase tracking-[0.22em]"
-                      style={{ color: meta.color }}
-                    >
-                      {meta.tier}
-                    </span>
-                    <p className="mt-1 font-display text-base leading-snug text-[var(--text)]">
-                      {w.label}
-                    </p>
-                    <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
-                      {w.detail}
-                    </p>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
+        <Stagger className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {wins.map((w, i) => (
+            <MedalCard key={w.label} win={w} index={i} />
+          ))}
         </Stagger>
 
         {/* Stats as big count-up numbers */}
-        <span className="mt-12 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+        <span className="mt-14 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
           By the numbers
         </span>
-        <Stagger className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {stats.map((s) => {
+        <Stagger className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {stats.map((s, i) => {
             const parts = parseStat(s.label);
+            const color = i === 0 ? "var(--forerunner)" : "var(--accent)";
             return (
               <li key={s.label} className="group">
-                <div className="flex h-full flex-col rounded-sm border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--accent)] hover:shadow-[0_0_34px_-14px_var(--accent)]">
+                <div
+                  className="flex h-full flex-col rounded-md border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--stat)] hover:shadow-[0_0_40px_-18px_var(--stat)]"
+                  style={{ ["--stat"]: color } as CSSProperties}
+                >
                   {parts?.pre && (
                     <span className="font-hud text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
                       {parts.pre}
                     </span>
                   )}
                   <span
-                    className="mt-1 font-display text-4xl leading-none text-[var(--accent)] md:text-5xl"
+                    className="mt-1 font-display text-5xl leading-none md:text-6xl"
                     style={{
-                      textShadow:
-                        "0 0 26px color-mix(in srgb, var(--accent) 40%, transparent)",
+                      color,
+                      textShadow: `0 0 28px color-mix(in srgb, ${color} 38%, transparent)`,
                     }}
                   >
                     {parts ? (
@@ -468,6 +570,7 @@ export default function ServiceRecord() {
                       s.label
                     )}
                   </span>
+                  <DrawBar color={color} />
                   {parts?.post && (
                     <span className="mt-2.5 text-sm leading-snug text-[var(--text)]/80">
                       {parts.post}
@@ -483,16 +586,18 @@ export default function ServiceRecord() {
         </Stagger>
 
         {/* Certs as clearance chips */}
-        <span className="mt-12 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+        <span className="mt-14 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
           Certifications
         </span>
-        <Stagger className="mt-4 flex flex-wrap gap-2.5" y={16}>
+        <Stagger className="mt-5 flex flex-wrap gap-2.5" y={16}>
           {certs.map((c) => (
             <li key={c.label}>
-              <div className="group inline-flex items-center gap-2.5 rounded-sm border border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] px-3.5 py-2.5 transition-colors duration-300 hover:border-[var(--accent)]">
-                <ClearanceIcon />
+              <div className="group inline-flex items-center gap-2.5 rounded-md border border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] px-3.5 py-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] hover:shadow-[0_0_30px_-16px_var(--accent)]">
+                <span className="transition-transform duration-300 group-hover:scale-110">
+                  <ClearanceIcon />
+                </span>
                 <div className="leading-tight">
-                  <span className="block font-hud text-xs uppercase tracking-[0.08em] text-[var(--text)]">
+                  <span className="block font-hud text-xs uppercase tracking-[0.08em] text-[var(--text)] transition-colors duration-300 group-hover:text-[var(--accent)]">
                     {c.label}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
