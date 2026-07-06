@@ -16,7 +16,7 @@ export const projects: Project[] = [
       live: "https://trace-forensic-search-ssookra-7703s-projects.vercel.app",
       repo: "https://github.com/StephenSook/trace-forensic-search",
     },
-    gallery: [],
+    gallery: ["/projects/trace/cover.jpeg"],
     caseStudy: {
       problem:
         "Missing-persons cases stall because the way a family describes someone almost never matches the clinical language in a forensic record. A mom says 'eagle tattoo on his left arm' and the case file says 'avian motif dermagraphic.' Keyword search misses that link every time, so real matches sit buried in the federal NamUs database.",
@@ -38,7 +38,7 @@ export const projects: Project[] = [
       live: "https://stepsafe-web.vercel.app",
       repo: "https://github.com/StephenSook/StepSafe",
     },
-    gallery: [],
+    gallery: ["/projects/stepsafe/cover.jpeg"],
     caseStudy: {
       problem:
         "Diabetic foot ulcers are a leading path to lower-limb amputation, and clinicians misjudge wound severity a large share of the time. People in rural or under-resourced areas often cannot get a fast read on whether a wound needs urgent care.",
@@ -64,7 +64,7 @@ export const projects: Project[] = [
       live: "https://pyrolens.vercel.app",
       repo: "https://github.com/StephenSook/PyroLens",
     },
-    gallery: [],
+    gallery: ["/projects/pyrolens/cover.jpeg"],
     caseStudy: {
       problem:
         "Prescribed burns keep wildfire risk down, but deciding when a burn is safe means juggling weather, soil moisture, fuel dryness, and satellite data by hand. Get the window wrong and a controlled burn becomes a real fire.",
@@ -88,7 +88,7 @@ export const projects: Project[] = [
       repo: "https://github.com/StephenSook/Saber",
       note: "May take ~30s to wake",
     },
-    gallery: [],
+    gallery: ["/projects/saber/cover.jpeg"],
     caseStudy: {
       problem:
         "When an English Language Learner misses a question, a teacher cannot tell whether the student did not understand the concept or just did not understand the English. Those two problems need opposite fixes, and lumping them together holds kids back.",
@@ -110,7 +110,7 @@ export const projects: Project[] = [
       live: "https://nest-portfolio-pi.vercel.app",
       note: "App in private beta",
     },
-    gallery: [],
+    gallery: ["/projects/nest/cover.jpeg"],
     caseStudy: {
       problem:
         "Every year young people age out of the Georgia foster system with almost no plan for what comes next. Benefits, housing, and school each live in separate systems with their own deadlines, and the 90-day gap right after aging out can decide whether someone lands on their feet.",
