@@ -1,106 +1,123 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { gsap } from "gsap";
 import { audioState } from "@/lib/audio";
 import { useHydrated, useReducedMotion } from "@/lib/motion";
-import { cn } from "@/lib/utils";
 
-const LOG = [
-  "> initializing UNSC interface",
-  "> loading operator profile: SPARTAN-SOOKRA",
-  "> mounting mission log",
-  "> calibrating HUD",
-];
+const NAME = "STEPHEN SOOKRA";
+const PANELS = 5;
 
+/**
+ * Cinematic entry: the name reveals over a bar, then a multi-panel curtain
+ * wipes upward to unveil the site (adapted from the daveholloway.uk loader).
+ * Plays once per session; skipped entirely under reduced motion.
+ */
 export function Boot() {
   const hydrated = useHydrated();
   const reduced = useReducedMotion();
-  const [pct, setPct] = useState(0);
+  const root = useRef<HTMLDivElement>(null);
+  const pctRef = useRef<HTMLSpanElement>(null);
   const [dismissed, setDismissed] = useState(false);
 
-  const booted =
+  const alreadyBooted =
     hydrated && typeof window !== "undefined"
       ? sessionStorage.getItem("booted") === "1"
       : false;
-  const visible = hydrated && !booted && !dismissed;
-  const showConsent = reduced || pct >= 100;
+  const visible = hydrated && !alreadyBooted && !dismissed && !reduced;
 
-  // Progress animation (rAF callback setState is fine; none run synchronously).
+  // Mark booted + init audio once we skip (reduced / already seen).
   useEffect(() => {
-    if (!visible || reduced) return;
-    const start = performance.now();
-    let raf = 0;
-    const tick = (t: number) => {
-      const p = Math.min(100, ((t - start) / 1600) * 100);
-      setPct(Math.floor(p));
-      if (p < 100) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [visible, reduced]);
+    if (hydrated && (reduced || alreadyBooted)) {
+      audioState.init();
+    }
+  }, [hydrated, reduced, alreadyBooted]);
 
-  // Lock scroll while the overlay is up.
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !root.current) return;
+    audioState.init();
     document.body.style.overflow = "hidden";
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({
+        onComplete: () => {
+          sessionStorage.setItem("booted", "1");
+          document.body.style.overflow = "";
+          setDismissed(true);
+        },
+      });
+      tl.from(".boot-letter", {
+        yPercent: 120,
+        opacity: 0,
+        duration: 0.7,
+        ease: "power4.out",
+        stagger: 0.035,
+      });
+      tl.fromTo(
+        ".boot-bar",
+        { scaleX: 0 },
+        {
+          scaleX: 1,
+          duration: 1.1,
+          ease: "power2.inOut",
+          onUpdate() {
+            if (pctRef.current) {
+              pctRef.current.textContent =
+                Math.round(this.progress() * 100) + "%";
+            }
+          },
+        },
+        "-=0.25"
+      );
+      tl.to(".boot-center", { opacity: 0, duration: 0.35 }, "+=0.15");
+      tl.to(
+        ".boot-panel",
+        {
+          yPercent: -100,
+          duration: 0.9,
+          ease: "power4.inOut",
+          stagger: 0.07,
+        },
+        "-=0.1"
+      );
+    }, root);
+
     return () => {
+      ctx.revert();
       document.body.style.overflow = "";
     };
   }, [visible]);
 
-  const finish = (audio: boolean) => {
-    audioState.init();
-    if (audio) audioState.set(true);
-    sessionStorage.setItem("booted", "1");
-    setDismissed(true);
-  };
-
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[var(--bg)] px-6">
-      <p className="hud-label mb-6">System online // SPARTAN-SOOKRA</p>
-
-      <div className="w-full max-w-md">
-        <div className="h-px w-full bg-[var(--line)]">
-          <div
-            className="h-px bg-[var(--accent)] transition-[width] duration-100"
-            style={{ width: `${reduced ? 100 : pct}%` }}
-          />
-        </div>
-        <div className="mt-3 flex justify-between font-hud text-xs text-[var(--muted)]">
-          <span>
-            {LOG[Math.min(LOG.length - 1, Math.floor((pct / 100) * LOG.length))]}
-          </span>
-          <span>{reduced ? 100 : pct}%</span>
-        </div>
+    <div ref={root} className="fixed inset-0 z-[200] overflow-hidden">
+      {/* curtain panels */}
+      <div className="absolute inset-0 flex">
+        {Array.from({ length: PANELS }).map((_, i) => (
+          <div key={i} className="boot-panel h-full flex-1 bg-[#05070a]" />
+        ))}
       </div>
 
-      <div
-        className={cn(
-          "mt-10 max-w-sm text-center transition-opacity duration-300",
-          showConsent ? "opacity-100" : "pointer-events-none opacity-0"
-        )}
-      >
-        <p className="mb-4 text-sm text-[var(--muted)]">
-          This experience has ambient audio. You can turn it on now or toggle it
-          any time from the top corner.
-        </p>
-        <div className="flex justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => finish(true)}
-            className="font-hud rounded-sm border border-[var(--accent)] px-5 py-2 text-sm uppercase tracking-[0.16em] text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10"
+      {/* center content */}
+      <div className="boot-center absolute inset-0 flex flex-col items-center justify-center gap-6 px-6">
+        <h2 className="flex overflow-hidden font-display text-4xl text-[var(--text)] md:text-6xl">
+          {Array.from(NAME).map((ch, i) => (
+            <span key={i} className="boot-letter inline-block">
+              {ch === " " ? " " : ch}
+            </span>
+          ))}
+        </h2>
+        <div className="flex w-64 items-center gap-3">
+          <div className="h-px flex-1 overflow-hidden bg-[var(--line)]">
+            <div className="boot-bar h-px w-full origin-left bg-[var(--accent)]" />
+          </div>
+          <span
+            ref={pctRef}
+            className="font-hud text-xs tabular-nums text-[var(--muted)]"
           >
-            Enable audio
-          </button>
-          <button
-            type="button"
-            onClick={() => finish(false)}
-            className="font-hud rounded-sm border border-[var(--line-strong)] px-5 py-2 text-sm uppercase tracking-[0.16em] text-[var(--text)] transition-colors hover:border-[var(--accent)]"
-          >
-            Continue muted
-          </button>
+            0%
+          </span>
         </div>
       </div>
     </div>

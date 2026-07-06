@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { HudFrame } from "@/components/hud/HudFrame";
+import { FiArrowUpRight } from "react-icons/fi";
 import { KineticText } from "@/components/hud/KineticText";
 import { MagneticButton } from "@/components/hud/MagneticButton";
 import { profile } from "@/data/profile";
@@ -12,6 +12,91 @@ import { cn } from "@/lib/utils";
 const ACCENT = "#8dff5a";
 
 const KONAMI = "↑ ↑ ↓ ↓ ← → ← → B A";
+
+// Phrase that curves around the rotating badge. Repeated so it wraps the ring.
+const ORBIT = "GET IN TOUCH • OPEN A CHANNEL • GET IN TOUCH • OPEN A CHANNEL • ";
+
+// Full circle, starting at 12 o'clock and running clockwise so the text sits
+// upright along the top. textLength stretches the phrase to the exact
+// circumference for a seamless loop with no seam gap.
+const RADIUS = 72;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const ORBIT_PATH = `M 100,${100 - RADIUS} A ${RADIUS},${RADIUS} 0 1,1 100,${100 + RADIUS} A ${RADIUS},${RADIUS} 0 1,1 100,${100 - RADIUS}`;
+
+/**
+ * Spinning circular-text badge. The phrase curves around an SVG <textPath> and
+ * the whole group rotates continuously via CSS. Purely decorative, so it is
+ * hidden from assistive tech. Spin halts (but stays visible) under
+ * prefers-reduced-motion via motion-reduce:animate-none.
+ */
+function OrbitBadge() {
+  return (
+    <div
+      aria-hidden="true"
+      className="relative aspect-square w-48 shrink-0 sm:w-56 md:w-60"
+    >
+      {/* soft accent bloom behind the ring */}
+      <div className="absolute inset-[14%] rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--accent)_24%,transparent),transparent_70%)] blur-xl" />
+
+      <svg viewBox="0 0 200 200" className="absolute inset-0 h-full w-full">
+        <defs>
+          <path id="comms-orbit" d={ORBIT_PATH} fill="none" />
+        </defs>
+
+        {/* faint guide rings */}
+        <circle
+          cx="100"
+          cy="100"
+          r="88"
+          fill="none"
+          stroke="var(--line-strong)"
+          strokeWidth="0.75"
+        />
+        <circle
+          cx="100"
+          cy="100"
+          r="54"
+          fill="none"
+          stroke="var(--line)"
+          strokeWidth="0.75"
+        />
+
+        <g
+          className="animate-spin [animation-duration:22s] motion-reduce:animate-none"
+          style={{ transformBox: "fill-box", transformOrigin: "center" }}
+        >
+          <text
+            className="font-hud"
+            fill="var(--accent)"
+            fontSize="11"
+            fontWeight={600}
+          >
+            <textPath
+              href="#comms-orbit"
+              startOffset="0"
+              textLength={CIRCUMFERENCE}
+              lengthAdjust="spacingAndGlyphs"
+            >
+              {ORBIT}
+            </textPath>
+          </text>
+        </g>
+      </svg>
+
+      {/* center hub: SS accent dot + outbound arrow */}
+      <div className="absolute inset-0 grid place-items-center">
+        <span className="relative grid h-16 w-16 place-items-center rounded-full border border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--panel)_92%,transparent)] shadow-[0_0_30px_-8px_var(--accent)]">
+          <span className="absolute inset-0 rounded-full bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]" />
+          <FiArrowUpRight
+            className="relative text-[var(--accent)]"
+            size={26}
+            strokeWidth={2.25}
+          />
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function Comms() {
   const [copied, setCopied] = useState(false);
@@ -41,122 +126,128 @@ export default function Comms() {
 
       <KineticText
         as="h2"
-        text="Establish Comms"
+        text="Let's build something."
         onScroll
         className="mt-4 font-display text-5xl text-[var(--text)] md:text-7xl"
       />
 
-      {/* comms terminal */}
-      <HudFrame label="CHANNEL // OPEN" className="mt-10 overflow-hidden md:mt-14">
-        {/* terminal title bar */}
-        <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] px-5 py-3 md:px-6">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5" aria-hidden="true">
-              <span className="h-2.5 w-2.5 rounded-full bg-[color-mix(in_srgb,var(--forerunner)_70%,transparent)]" />
-              <span className="h-2.5 w-2.5 rounded-full bg-[color-mix(in_srgb,var(--hud)_70%,transparent)]" />
-              <span className="h-2.5 w-2.5 rounded-full bg-[color-mix(in_srgb,var(--accent)_70%,transparent)]" />
-            </span>
-            <span className="font-hud text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
-              comms.terminal
-            </span>
-          </div>
+      <p className="mt-5 max-w-xl text-sm leading-relaxed text-[var(--muted)] md:text-base">
+        Recruiters, collaborators, and fellow builders, the line is open. Bring a
+        team to join, an idea worth building, or a hard problem you want another
+        set of hands on, and I will answer.
+      </p>
+
+      {/* channel panel */}
+      <div className="relative mt-10 overflow-hidden rounded-lg border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_70%,transparent)] backdrop-blur-sm md:mt-14">
+        {/* accent wash pinned to the badge side */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_140%_at_100%_0%,color-mix(in_srgb,var(--accent)_12%,transparent),transparent_55%)]"
+        />
+
+        {/* corner ticks */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 top-0 h-4 w-4 border-l-2 border-t-2 border-[var(--accent)]"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 right-0 h-4 w-4 border-b-2 border-r-2 border-[var(--accent)]"
+        />
+
+        {/* status bar */}
+        <div className="relative flex items-center justify-between gap-4 border-b border-[var(--line)] px-5 py-3 md:px-8">
+          <span className="hud-label text-[var(--muted)]">CHANNEL // OPEN</span>
           <span className="flex items-center gap-2 font-hud text-[10px] uppercase tracking-[0.24em] text-[var(--muted)]">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)]" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)] motion-reduce:animate-none" />
             Online
           </span>
         </div>
 
-        {/* terminal body */}
-        <div className="scanlines p-6 md:p-10">
-          {/* prompt line */}
-          <p className="font-hud text-xs tracking-wide md:text-sm">
-            <span className="text-[var(--accent)]">sookra@comms</span>
-            <span className="text-[var(--muted)]">:~$</span>
-            <span className="ml-2 text-[var(--text)]">./open-channel</span>
-            <span
-              aria-hidden="true"
-              className="ml-1 inline-block h-3.5 w-2 translate-y-0.5 animate-pulse bg-[var(--accent)] align-middle"
-            />
-          </p>
-
-          <h3 className="mt-6 font-display text-3xl text-[var(--text)] md:text-4xl">
-            Open a channel.
-          </h3>
-
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--muted)] md:text-base">
-            Recruiters, collaborators, and fellow builders, the line is open. If
-            you have a team to join, an idea worth building, or a hard problem
-            you want another set of hands on, send a signal and I will answer.
-          </p>
-
-          {/* email copy field */}
-          <div className="mt-8">
+        {/* body */}
+        <div className="relative grid gap-10 p-6 md:p-10 lg:grid-cols-[1.4fr_1fr] lg:items-center lg:gap-6">
+          {/* left: frequency + actions */}
+          <div className="min-w-0">
             <span className="font-hud text-[10px] uppercase tracking-[0.28em] text-[var(--muted)]">
               Primary frequency
             </span>
+
+            {/* oversized email copy control */}
             <button
               type="button"
               onClick={copyEmail}
               aria-label={`Copy email address ${profile.email} to clipboard`}
-              className={cn(
-                "group mt-2 flex w-full items-center justify-between gap-4 rounded-sm border px-4 py-3.5 text-left transition-colors duration-200 md:w-auto md:min-w-[26rem]",
-                "border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--panel-2)_60%,transparent)]",
-                "hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
-              )}
+              className="group mt-3 flex w-full flex-col gap-3 text-left"
             >
-              <span className="flex min-w-0 items-center gap-3">
-                <span aria-hidden="true" className="font-hud text-sm text-[var(--accent)]">
+              <span className="flex items-baseline gap-3">
+                <span
+                  aria-hidden="true"
+                  className="font-hud text-lg text-[var(--accent)] md:text-2xl"
+                >
                   $
                 </span>
-                <span className="truncate font-hud text-sm text-[var(--text)] md:text-base">
+                <span className="min-w-0 break-all font-hud text-2xl leading-none text-[var(--text)] transition-colors duration-200 group-hover:text-[var(--accent)] sm:text-3xl md:text-4xl">
                   {profile.email}
                 </span>
               </span>
               <span
                 aria-hidden="true"
                 className={cn(
-                  "shrink-0 font-hud text-[10px] uppercase tracking-[0.2em] transition-colors duration-200",
+                  "flex items-center gap-2 font-hud text-[10px] uppercase tracking-[0.24em] transition-colors duration-200",
                   copied
                     ? "text-[var(--accent)]"
                     : "text-[var(--muted)] group-hover:text-[var(--accent)]"
                 )}
               >
-                {copied ? "Copied" : "Copy"}
+                <span
+                  className={cn(
+                    "inline-block h-px w-8 transition-colors duration-200",
+                    copied
+                      ? "bg-[var(--accent)]"
+                      : "bg-[var(--line-strong)] group-hover:bg-[var(--accent)]"
+                  )}
+                />
+                {copied ? "Copied to clipboard" : "Click to copy"}
               </span>
             </button>
             <span aria-live="polite" className="sr-only">
               {copied ? "Email address copied to clipboard" : ""}
             </span>
+
+            {/* actions */}
+            <div className="mt-8 flex flex-wrap gap-3">
+              <MagneticButton
+                href={`mailto:${profile.email}`}
+                ariaLabel="Compose an email to Stephen Sookra"
+                className="px-6 py-3 text-xs"
+              >
+                SEND MAIL
+              </MagneticButton>
+              <MagneticButton
+                href={profile.github}
+                external
+                ariaLabel="Open Stephen Sookra's GitHub profile"
+                className="px-6 py-3 text-xs"
+              >
+                GITHUB
+              </MagneticButton>
+              <MagneticButton
+                href={profile.linkedin}
+                external
+                ariaLabel="Open Stephen Sookra's LinkedIn profile"
+                className="px-6 py-3 text-xs"
+              >
+                LINKEDIN
+              </MagneticButton>
+            </div>
           </div>
 
-          {/* actions */}
-          <div className="mt-6 flex flex-wrap gap-3">
-            <MagneticButton
-              href={`mailto:${profile.email}`}
-              ariaLabel="Compose an email to Stephen Sookra"
-              className="px-6 py-3 text-xs"
-            >
-              SEND MAIL
-            </MagneticButton>
-            <MagneticButton
-              href={profile.github}
-              external
-              ariaLabel="Open Stephen Sookra's GitHub profile"
-              className="px-6 py-3 text-xs"
-            >
-              GITHUB
-            </MagneticButton>
-            <MagneticButton
-              href={profile.linkedin}
-              external
-              ariaLabel="Open Stephen Sookra's LinkedIn profile"
-              className="px-6 py-3 text-xs"
-            >
-              LINKEDIN
-            </MagneticButton>
+          {/* right: spinning circular badge */}
+          <div className="flex justify-center lg:justify-end">
+            <OrbitBadge />
           </div>
         </div>
-      </HudFrame>
+      </div>
 
       {/* more pages */}
       <nav aria-label="More pages" className="mt-8 flex gap-6">

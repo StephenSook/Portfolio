@@ -7,7 +7,6 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import Image from "next/image";
 import { gsap } from "gsap";
 import { Reveal } from "@/components/anim/Reveal";
 import { KineticText } from "@/components/hud/KineticText";
@@ -27,11 +26,16 @@ const kindLabel: Record<Role["kind"], string> = {
   teaching: "Teaching",
 };
 
-const medalArt: Record<number, { src: string; color: string; tier: string }> = {
-  1: { src: "/brand/medals/gold.png", color: "var(--forerunner)", tier: "Gold" },
-  2: { src: "/brand/medals/silver.png", color: "#c8d2dc", tier: "Silver" },
-  3: { src: "/brand/medals/bronze.png", color: "#d08b52", tier: "Bronze" },
-  0: { src: "/brand/medals/gold.png", color: "var(--forerunner)", tier: "Gold" },
+/**
+ * Rank styling keyed by the leading digit of a win label. No badge graphics:
+ * each finish is a Fraunces serif rank glyph tinted by tier (gold / silver /
+ * bronze, with green as the catch-all for anything without a 1-3 placing).
+ */
+const rankTier: Record<number, { rank: string; color: string; tier: string }> = {
+  1: { rank: "1ST", color: "var(--forerunner)", tier: "Gold" },
+  2: { rank: "2ND", color: "#c8d2dc", tier: "Silver" },
+  3: { rank: "3RD", color: "#d08b52", tier: "Bronze" },
+  0: { rank: "TOP", color: "var(--accent)", tier: "Podium" },
 };
 
 /** Leading rank digit of a win label ("1st, ..." -> 1). 0 when none. */
@@ -209,33 +213,58 @@ function SectionRule({ children }: { children: ReactNode }) {
 }
 
 /**
- * A single podium finish rendered as a premium, mouse-reactive medal card.
- * The card tilts toward the pointer, with the transform mutated directly on the
- * ref inside the event handler (never through React state), and the medal art
- * floats on a gsap loop. Under reduced motion or on coarse pointers it renders
- * fully static. The pure-black medal background drops out via mix-blend-lighten.
+ * A single podium finish rendered as a premium, pointer-reactive rank card with
+ * no badge graphic. A large Fraunces serif rank ("1ST", "2ND", "3RD") derived
+ * from the win label leads, with the win label and its detail beneath it, all
+ * wrapped in a tier-tinted gradient border that slowly rotates and a light that
+ * sweeps across on hover. The perspective tilt is written straight onto the ref
+ * inside the pointer handler (never through React state); the rank glyph floats
+ * on a gsap loop and the border angle is advanced by gsap through a shared
+ * custom property. Under reduced motion or on coarse pointers every motion
+ * effect no-ops and the card renders fully static.
  */
-function MedalCard({ win, index }: { win: Achievement; index: number }) {
+function RankCard({ win, index }: { win: Achievement; index: number }) {
   const tiltRef = useRef<HTMLDivElement | null>(null);
   const floatRef = useRef<HTMLDivElement | null>(null);
   const reduced = useReducedMotion();
   const coarse = useCoarsePointer();
   const interactive = !reduced && !coarse;
-  const art = medalArt[rankOf(win.label)] ?? medalArt[0];
+  const tier = rankTier[rankOf(win.label)] ?? rankTier[0];
 
-  // Gentle idle float on the medal art (transform-only, auto-pauses offscreen).
+  // Gentle idle float on the rank glyph (transform-only, auto-pauses offscreen).
   useEffect(() => {
     if (reduced || coarse) return;
     const el = floatRef.current;
     if (!el) return;
     const tween = gsap.to(el, {
-      y: -9,
-      duration: 2.8,
+      y: -7,
+      duration: 3,
       ease: "sine.inOut",
       repeat: -1,
       yoyo: true,
     });
-    tween.seek((index % 3) * 0.9); // desync neighbouring medals
+    tween.seek((index % 3) * 0.9); // desync neighbouring cards
+    return () => {
+      tween.kill();
+    };
+  }, [reduced, coarse, index]);
+
+  // Rotate the gradient border by advancing the shared --angle custom property.
+  useEffect(() => {
+    if (reduced || coarse) return;
+    const el = tiltRef.current;
+    if (!el) return;
+    const state = { a: 0 };
+    const tween = gsap.to(state, {
+      a: 360,
+      duration: 7,
+      ease: "none",
+      repeat: -1,
+      onUpdate: () => {
+        el.style.setProperty("--angle", `${state.a}deg`);
+      },
+    });
+    tween.seek((index % 3) * 2.3); // desync neighbouring borders
     return () => {
       tween.kill();
     };
@@ -247,7 +276,7 @@ function MedalCard({ win, index }: { win: Achievement; index: number }) {
     const r = el.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width - 0.5;
     const py = (e.clientY - r.top) / r.height - 0.5;
-    el.style.transform = `rotateX(${(py * -14).toFixed(2)}deg) rotateY(${(px * 16).toFixed(2)}deg)`;
+    el.style.transform = `rotateX(${(py * -12).toFixed(2)}deg) rotateY(${(px * 14).toFixed(2)}deg)`;
   };
 
   const handleLeave = () => {
@@ -261,53 +290,94 @@ function MedalCard({ win, index }: { win: Achievement; index: number }) {
         ref={tiltRef}
         onPointerMove={interactive ? handleMove : undefined}
         onPointerLeave={interactive ? handleLeave : undefined}
-        style={{ ["--tier"]: art.color } as CSSProperties}
-        className="relative flex h-full flex-col items-center overflow-hidden rounded-md border border-[var(--line)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel)_90%,transparent),var(--bg))] px-6 pb-6 pt-8 text-center transition-transform duration-200 ease-out will-change-transform hover:border-[color-mix(in_srgb,var(--tier)_55%,var(--line-strong))]"
+        style={
+          {
+            ["--tier"]: tier.color,
+            ["--angle"]: "130deg",
+          } as CSSProperties
+        }
+        className="relative h-full rounded-lg transition-transform duration-200 ease-out will-change-transform"
       >
-        {/* top hairline lights up on hover */}
+        {/* rotating gradient border rim */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-0 h-px opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+          className="pointer-events-none absolute -inset-px rounded-lg opacity-70 transition-opacity duration-500 group-hover:opacity-100"
           style={{
             background:
-              "linear-gradient(90deg, transparent, var(--tier), transparent)",
+              "conic-gradient(from var(--angle), transparent 0deg, var(--tier) 60deg, color-mix(in srgb, var(--tier) 22%, transparent) 140deg, transparent 210deg, var(--tier) 320deg, transparent 360deg)",
           }}
         />
-        {/* glow pool behind the medal, intensifies on hover */}
+        {/* soft outer glow, blooms on hover */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-7 h-40 w-40 -translate-x-1/2 rounded-full opacity-30 blur-2xl transition-opacity duration-500 group-hover:opacity-80"
+          className="pointer-events-none absolute -inset-1 rounded-xl opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-50"
           style={{
             background:
-              "radial-gradient(closest-side, color-mix(in srgb, var(--tier) 60%, transparent), transparent)",
+              "conic-gradient(from var(--angle), transparent 0deg, var(--tier) 60deg, transparent 210deg, var(--tier) 320deg, transparent 360deg)",
           }}
         />
-        <div ref={floatRef} className="relative">
-          <Image
-            src={art.src}
-            alt=""
-            width={200}
-            height={244}
-            sizes="(max-width: 640px) 42vw, 190px"
-            className="h-auto w-36 mix-blend-lighten sm:w-44"
+        {/* card surface */}
+        <div className="relative flex h-full flex-col overflow-hidden rounded-[7px] border border-[var(--line)] bg-[linear-gradient(155deg,color-mix(in_srgb,var(--panel)_94%,transparent),var(--bg))] px-6 py-6">
+          {/* glow pool behind the rank glyph, intensifies on hover */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-6 -top-8 h-40 w-40 rounded-full opacity-40 blur-2xl transition-opacity duration-500 group-hover:opacity-80"
             style={{
-              filter:
-                "drop-shadow(0 10px 16px color-mix(in srgb, var(--tier) 32%, transparent))",
+              background:
+                "radial-gradient(closest-side, color-mix(in srgb, var(--tier) 55%, transparent), transparent)",
             }}
           />
+          {/* hover shine sweep */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -translate-x-full transition-transform duration-[900ms] ease-out group-hover:translate-x-full"
+            style={{
+              background:
+                "linear-gradient(115deg, transparent 34%, color-mix(in srgb, var(--tier) 16%, transparent) 47%, rgba(255,255,255,0.16) 50%, color-mix(in srgb, var(--tier) 16%, transparent) 53%, transparent 66%)",
+            }}
+          />
+
+          <div className="relative flex items-center justify-between">
+            <span
+              className="font-hud text-[10px] uppercase tracking-[0.28em]"
+              style={{ color: "var(--tier)" }}
+            >
+              {tier.tier}
+            </span>
+            <span className="font-hud text-[10px] tracking-[0.2em] text-[var(--muted)]">
+              {`// ${String(index + 1).padStart(2, "0")}`}
+            </span>
+          </div>
+
+          <div ref={floatRef} className="relative mt-4">
+            <span
+              className="block font-display text-7xl leading-[0.85] tabular-nums"
+              style={{
+                color: "var(--tier)",
+                textShadow:
+                  "0 0 34px color-mix(in srgb, var(--tier) 40%, transparent)",
+              }}
+            >
+              {tier.rank}
+            </span>
+          </div>
+
+          <span
+            aria-hidden="true"
+            className="mt-5 block h-px w-full"
+            style={{
+              background:
+                "linear-gradient(90deg, var(--tier), color-mix(in srgb, var(--tier) 18%, transparent), transparent)",
+            }}
+          />
+
+          <p className="relative mt-4 font-display text-lg leading-snug text-[var(--text)]">
+            {win.label}
+          </p>
+          <p className="relative mt-2 text-xs leading-relaxed text-[var(--muted)]">
+            {win.detail}
+          </p>
         </div>
-        <span
-          className="mt-4 font-hud text-[10px] uppercase tracking-[0.28em]"
-          style={{ color: "var(--tier)" }}
-        >
-          {art.tier}
-        </span>
-        <p className="mt-2 font-display text-base leading-snug text-[var(--text)]">
-          {win.label}
-        </p>
-        <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-          {win.detail}
-        </p>
       </div>
     </li>
   );
@@ -530,7 +600,7 @@ export default function ServiceRecord() {
         </span>
         <Stagger className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {wins.map((w, i) => (
-            <MedalCard key={w.label} win={w} index={i} />
+            <RankCard key={w.label} win={w} index={i} />
           ))}
         </Stagger>
 
