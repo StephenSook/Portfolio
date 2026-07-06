@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
+import Link from "next/link";
 import { HudFrame } from "@/components/hud/HudFrame";
 import { KineticText } from "@/components/hud/KineticText";
 import { MagneticButton } from "@/components/hud/MagneticButton";
@@ -157,8 +158,24 @@ export default function Comms() {
         </div>
       </HudFrame>
 
+      {/* more pages */}
+      <nav aria-label="More pages" className="mt-8 flex gap-6">
+        <Link
+          href="/work"
+          className="font-hud text-xs uppercase tracking-[0.2em] text-[var(--muted)] transition-colors hover:text-[var(--accent)]"
+        >
+          All Work →
+        </Link>
+        <Link
+          href="/lab"
+          className="font-hud text-xs uppercase tracking-[0.2em] text-[var(--muted)] transition-colors hover:text-[var(--accent)]"
+        >
+          The Lab →
+        </Link>
+      </nav>
+
       {/* minimal footer */}
-      <div className="mt-8 flex flex-col items-start justify-between gap-3 border-t border-[var(--line)] pt-6 font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)] sm:flex-row sm:items-center">
+      <div className="mt-6 flex flex-col items-start justify-between gap-3 border-t border-[var(--line)] pt-6 font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)] sm:flex-row sm:items-center">
         <span>&copy; 2026 Stephen Sookra</span>
         <span aria-hidden="true" className="tracking-[0.32em] opacity-40">
           {KONAMI}
