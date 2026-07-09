@@ -20,7 +20,7 @@ export function AudioManager() {
     const el = ref.current;
     if (!el) return;
     if (enabled) {
-      el.volume = 0.18;
+      el.volume = 0.16;
       el.play().catch(() => {
         /* browser blocked; user can retry via toggle */
       });
@@ -31,7 +31,7 @@ export function AudioManager() {
 
   return (
     <>
-      <audio ref={ref} loop preload="none" src="/audio/ambient.mp3" />
+      <audio ref={ref} loop preload="none" src="/audio/calm.mp3" />
       <button
         type="button"
         onClick={() => audioState.toggle()}
