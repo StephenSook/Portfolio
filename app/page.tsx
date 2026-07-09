@@ -30,7 +30,7 @@ export default function Home() {
           <Reveal><About /></Reveal>
           <Reveal><Arsenal /></Reveal>
           <ProjectDeck />
-          <Reveal><ServiceRecord /></Reveal>
+          <ServiceRecord />
           <InterestsReel />
           <Reveal><Dossier /></Reveal>
           <Reveal><Comms /></Reveal>
