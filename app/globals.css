@@ -249,19 +249,52 @@ a {
     340px 340px;
 }
 
-/* Konami LEGENDARY theme swaps the bust's build from emerald to crimson. */
-.bust-green,
-.bust-crimson {
+/* Konami LEGENDARY theme swaps the bust's build from sky-blue to crimson. */
+.bust-default,
+.bust-legendary {
   transition: opacity 0.6s ease;
 }
-.bust-crimson {
+.bust-legendary {
   opacity: 0;
 }
-:root[data-theme="legendary"] .bust-green {
+:root[data-theme="legendary"] .bust-default {
   opacity: 0;
 }
-:root[data-theme="legendary"] .bust-crimson {
+:root[data-theme="legendary"] .bust-legendary {
   opacity: 1;
+}
+
+/* Photographic smoke plates: screen blend sinks their black, slow drift. */
+.hero-smoke {
+  position: absolute;
+  width: 120%;
+  max-width: none;
+  height: auto;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  will-change: transform;
+}
+.hero-smoke-a {
+  top: -8%;
+  left: -12%;
+  opacity: 0.5;
+  animation: smoke-a 60s ease-in-out infinite alternate;
+}
+.hero-smoke-b {
+  bottom: -10%;
+  right: -12%;
+  opacity: 0.38;
+  animation: smoke-b 75s ease-in-out infinite alternate;
+}
+@keyframes smoke-a {
+  to {
+    transform: translate3d(4%, 2.5%, 0) scale(1.08);
+  }
+}
+@keyframes smoke-b {
+  to {
+    transform: translate3d(-4%, -2%, 0) scale(1.1);
+  }
 }
 
 /* ---------- keyframes ---------- */

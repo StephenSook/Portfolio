@@ -19,9 +19,55 @@ function HeroBackground() {
     <div aria-hidden className="absolute inset-0 overflow-hidden bg-[#05070a]">
       <div className="hero-aurora hero-aurora-a" />
       <div className="hero-aurora hero-aurora-b" />
+      {/* photographic smoke plates on screen blend: black falls away, mist stays */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/textures/smoke-cool.webp" alt="" className="hero-smoke hero-smoke-a" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/textures/smoke-warm.webp" alt="" className="hero-smoke hero-smoke-b" />
       <div className="hero-stars absolute inset-0" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(5,7,10,0.7)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,7,10,0.65),transparent_22%,transparent_72%,rgba(5,7,10,0.9))]" />
+    </div>
+  );
+}
+
+const PLATE_STATS = [
+  { v: "07", k: "Podium finishes" },
+  { v: "15+", k: "Hackathons entered" },
+  { v: "3.8", k: "GPA · CS, AI & ML" },
+];
+
+/**
+ * Slim service-record plate for the hero's open left flank. Sits under the
+ * headline layer so the rotating word sweeps over it, same blend rule as the
+ * bust on the right.
+ */
+function StatPlate() {
+  return (
+    <div
+      data-hero-in
+      aria-hidden="true"
+      className="absolute left-6 top-1/2 z-10 hidden -translate-y-1/2 lg:block xl:left-10"
+    >
+      <div className="border-l border-[var(--line-strong)] pl-5">
+        <span className="hud-label text-[var(--muted)]">Service record</span>
+        <ul className="mt-4 space-y-4">
+          {PLATE_STATS.map((s) => (
+            <li key={s.k}>
+              <span className="block font-display text-3xl leading-none text-[var(--text)]">
+                {s.v}
+              </span>
+              <span className="mt-1 block font-hud text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                {s.k}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <span className="mt-5 flex items-center gap-2 font-hud text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)] motion-reduce:animate-none" />
+          Open to internships
+        </span>
+      </div>
     </div>
   );
 }
@@ -93,19 +139,19 @@ function HeroBust({
     >
       <div className="relative h-full transition-transform duration-500 ease-out group-hover:scale-[1.015]">
         <Image
-          src="/personal/bust-green.webp"
+          src="/personal/bust-blue.webp"
           alt=""
           width={1000}
           height={1340}
           priority
-          className="bust-green h-full w-auto"
+          className="bust-default h-full w-auto"
         />
         <Image
           src="/personal/bust-crimson.webp"
           alt=""
           width={1000}
           height={1340}
-          className="bust-crimson absolute inset-0 h-full w-auto"
+          className="bust-legendary absolute inset-0 h-full w-auto"
         />
       </div>
     </div>
@@ -191,6 +237,7 @@ export function Hero() {
       className="relative flex min-h-svh w-full flex-col justify-between overflow-hidden py-6"
     >
       <HeroBackground />
+      <StatPlate />
       <HeroBust figureRef={bustRef} hoverRef={hoverRef} />
       <EmberField figureRef={bustRef} hoverRef={hoverRef} />
 

@@ -27,16 +27,20 @@ type Particle = {
 
 type EdgePoint = { nx: number; ny: number };
 
-const AMBIENT_CAP = 90;
-const HOVER_CAP = 240;
-const BUST_SRC = "/personal/bust-green.webp";
+const AMBIENT_CAP = 100;
+const HOVER_CAP = 280;
+const BUST_SRC = "/personal/bust-blue.webp";
 
 function readPalette(): string[] {
   const cs = getComputedStyle(document.documentElement);
   const gold = cs.getPropertyValue("--forerunner").trim() || "#f5b33c";
-  const energy = cs.getPropertyValue("--energy").trim() || "#8dff5a";
-  // ember orange carries the fire read; gold and the theme energy accent it
-  return ["#ff8a3d", "#ff8a3d", gold, gold, energy, "#ffe9c4"];
+  // default build is the sky-blue bust: cyan sparks echo the hood; the
+  // LEGENDARY theme trades them for its own hot energy color
+  const legendary = document.documentElement.getAttribute("data-theme") === "legendary";
+  const accent = legendary
+    ? cs.getPropertyValue("--energy").trim() || "#ff5a1f"
+    : cs.getPropertyValue("--hud").trim() || "#4cc2ff";
+  return ["#ff8a3d", "#ff8a3d", gold, gold, accent, "#ffe9c4"];
 }
 
 /** One soft radial glow sprite per palette color, blitted behind each core. */
@@ -231,11 +235,11 @@ export function EmberField({
       const hovering = hoverRef.current;
       const cap = hovering ? HOVER_CAP : AMBIENT_CAP;
       if (hovering) {
-        for (let s = 0; s < 5 && particles.length < cap; s++) {
-          if (Math.random() < 0.72) spawnCascade();
+        for (let s = 0; s < 7 && particles.length < cap; s++) {
+          if (Math.random() < 0.74) spawnCascade();
           else spawnAmbient();
         }
-      } else if (particles.length < cap && Math.random() < 0.75) {
+      } else if (particles.length < cap && Math.random() < 0.9) {
         spawnAmbient();
       }
 
