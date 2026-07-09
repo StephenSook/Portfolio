@@ -360,7 +360,7 @@ function HonorsShelf({
   if (!pinned) {
     return (
       <div className="mt-10">
-        <SectionRule>Commendations — swipe</SectionRule>
+        <SectionRule>Commendations // swipe</SectionRule>
         <div className="-mx-6 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-4">
           {cards}
         </div>
@@ -371,7 +371,7 @@ function HonorsShelf({
   return (
     <div ref={pinRef} className="relative flex h-svh flex-col justify-center overflow-hidden">
       <div className="mx-auto w-full max-w-6xl px-6">
-        <SectionRule>Commendations — the shelf slides as you scroll</SectionRule>
+        <SectionRule>Commendations // the shelf slides as you scroll</SectionRule>
       </div>
 
       <div

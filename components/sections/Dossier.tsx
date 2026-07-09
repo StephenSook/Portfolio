@@ -11,7 +11,7 @@ const RESUME_SRC = "/resume/Stephen_Sookra_Resume.pdf";
 
 const FACTS = [
   { k: "File", v: "PDF // 1 page" },
-  { k: "Degree", v: "B.S. CS — AI & ML" },
+  { k: "Degree", v: "B.S. CS · AI & ML" },
   { k: "Class", v: "May 2028" },
   { k: "Status", v: "Open to internships" },
 ];

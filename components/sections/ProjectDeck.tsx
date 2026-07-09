@@ -13,8 +13,12 @@ import { cn } from "@/lib/utils";
 const featured = projects.filter((p) => p.tier === "featured");
 const archiveCount = projects.filter((p) => p.tier === "archive").length;
 
-/** Scroll distance per card step, in viewport-heights. Short = one flick. */
-const STEP_VH = 0.55;
+/**
+ * Scroll distance per card step, in viewport-heights. Tuned so a medium
+ * trackpad flick through Lenis momentum travels almost exactly one step;
+ * shorter and flicks skip cards, longer and stepping feels heavy.
+ */
+const STEP_VH = 0.75;
 
 type Rarity = { name: string; color: string };
 
@@ -211,11 +215,11 @@ function InfoPanel({ p }: { p: Project }) {
   return (
     <div key={p.slug} className="animate-[word-in_0.55s_cubic-bezier(0.16,1,0.3,1)]">
       <span className="hud-label text-[var(--muted)]">
-        {p.role || "Project"} — {p.dates}
+        {p.role || "Project"} · {p.dates}
       </span>
       {p.outcome ? (
         <p className="mt-3 font-display text-2xl leading-snug md:text-3xl" style={{ color: tier.color }}>
-          {p.outcome.place ? `${p.outcome.place} — ` : ""}
+          {p.outcome.place ? `${p.outcome.place} · ` : ""}
           {p.outcome.event}
         </p>
       ) : (
@@ -418,7 +422,7 @@ export function ProjectDeck() {
 
           <div className="mt-6 flex items-center justify-between gap-6">
             <span className="hud-label text-[var(--muted)]">
-              Scroll — one flick per card
+              Scroll // one flick per card
             </span>
             {/* deck progress */}
             <span className="relative h-px flex-1 max-w-64 overflow-hidden bg-[var(--line)]">

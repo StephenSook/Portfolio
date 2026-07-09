@@ -92,7 +92,7 @@ function HeroFigure({ className }: { className?: string }) {
           width={800}
           height={1194}
           priority={false}
-          className="minifig-green relative w-full mix-blend-lighten"
+          className="minifig-green relative w-full"
         />
         <Image
           src="/personal/minifig-fire.webp"
@@ -100,7 +100,7 @@ function HeroFigure({ className }: { className?: string }) {
           width={800}
           height={1194}
           priority={false}
-          className="minifig-fire absolute inset-0 w-full mix-blend-lighten"
+          className="minifig-fire absolute inset-0 w-full"
         />
       </div>
     </div>
@@ -206,7 +206,7 @@ export function Hero() {
       {/* center statement */}
       <div className="relative z-20 mx-auto w-full max-w-7xl px-6 text-center">
         <p data-hero-in className="hud-label mb-6 text-[var(--muted)]">
-          Portfolio — 2026
+          Portfolio // 2026
         </p>
         <h1 className="font-display leading-[0.92] text-[var(--text)]">
           <span
@@ -217,7 +217,7 @@ export function Hero() {
           </span>
           <span
             data-hero-in
-            className="block text-[16vw] font-black md:text-[11rem]"
+            className="block text-[12vw] font-black md:text-[11rem]"
           >
             <RotatingWord />
           </span>

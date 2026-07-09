@@ -32,7 +32,7 @@ export default function About() {
       style={{ ["--accent"]: "#8dff5a" } as CSSProperties}
     >
       <div className="mx-auto max-w-6xl px-6">
-        <span className="hud-label text-[var(--muted)]">About — who I am</span>
+        <span className="hud-label text-[var(--muted)]">About // who I am</span>
 
         <div className="mt-10 grid gap-12 md:mt-14 md:grid-cols-[1.35fr_0.9fr] md:gap-16">
           {/* left: story */}
