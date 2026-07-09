@@ -249,18 +249,18 @@ a {
     340px 340px;
 }
 
-/* Konami LEGENDARY theme swaps the minifig's element from energy to fire. */
-.minifig-green,
-.minifig-fire {
+/* Konami LEGENDARY theme swaps the bust's build from emerald to crimson. */
+.bust-green,
+.bust-crimson {
   transition: opacity 0.6s ease;
 }
-.minifig-fire {
+.bust-crimson {
   opacity: 0;
 }
-:root[data-theme="legendary"] .minifig-green {
+:root[data-theme="legendary"] .bust-green {
   opacity: 0;
 }
-:root[data-theme="legendary"] .minifig-fire {
+:root[data-theme="legendary"] .bust-crimson {
   opacity: 1;
 }
 

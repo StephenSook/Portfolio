@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { FiGithub, FiLinkedin, FiMail } from "react-icons/fi";
 import { gsap } from "gsap";
+import { EmberField } from "@/components/anim/EmberField";
 import { MagneticButton } from "@/components/hud/MagneticButton";
 import { useCoarsePointer, useReducedMotion } from "@/lib/motion";
 import { profile } from "@/data/profile";
@@ -26,24 +27,30 @@ function HeroBackground() {
 }
 
 /**
- * The minifig. Blends onto the page background (both share #05070a) so it
- * floats without a cutout. Magnetic: it leans toward the pointer when the
- * cursor gets near, and idles on a gentle float otherwise. The Konami
- * LEGENDARY theme swaps the green energy build for the fire build via CSS.
+ * The voxel ninja bust. Crops in from the bottom right, layered between the
+ * marquee bands and the headline (reference: the motionsites voxel-ninja
+ * hero). Pointer proximity leans it a few px; entering it flips hoverRef so
+ * EmberField pours fire down the figure. The Konami LEGENDARY theme swaps the
+ * emerald build for the crimson one via CSS only.
  */
-function HeroFigure({ className }: { className?: string }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
+function HeroBust({
+  figureRef,
+  hoverRef,
+}: {
+  figureRef: RefObject<HTMLDivElement | null>;
+  hoverRef: RefObject<boolean>;
+}) {
   const reduced = useReducedMotion();
   const coarse = useCoarsePointer();
 
   useEffect(() => {
     if (reduced || coarse) return;
-    const el = wrapRef.current;
+    const el = figureRef.current;
     if (!el) return;
 
-    const xTo = gsap.quickTo(el, "x", { duration: 0.7, ease: "power3" });
-    const yTo = gsap.quickTo(el, "y", { duration: 0.7, ease: "power3" });
-    const rTo = gsap.quickTo(el, "rotation", { duration: 0.9, ease: "power3" });
+    const xTo = gsap.quickTo(el, "x", { duration: 0.9, ease: "power3" });
+    const yTo = gsap.quickTo(el, "y", { duration: 0.9, ease: "power3" });
+    const rTo = gsap.quickTo(el, "rotation", { duration: 1.1, ease: "power3" });
 
     const onMove = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
@@ -52,12 +59,12 @@ function HeroFigure({ className }: { className?: string }) {
       const dx = e.clientX - cx;
       const dy = e.clientY - cy;
       const dist = Math.hypot(dx, dy);
-      const range = Math.max(r.width, r.height) * 1.15;
+      const range = Math.max(r.width, r.height) * 1.3;
       if (dist < range) {
         const pull = 1 - dist / range;
-        xTo(dx * 0.16 * pull);
-        yTo(dy * 0.2 * pull);
-        rTo(dx * 0.02 * pull);
+        xTo(dx * 0.035 * pull);
+        yTo(dy * 0.045 * pull);
+        rTo(dx * 0.004 * pull);
       } else {
         xTo(0);
         yTo(0);
@@ -66,41 +73,39 @@ function HeroFigure({ className }: { className?: string }) {
     };
     window.addEventListener("pointermove", onMove, { passive: true });
 
-    const float = gsap.to(el.querySelector("[data-figure]"), {
-      y: -10,
-      duration: 3.2,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1,
-    });
-
     return () => {
       window.removeEventListener("pointermove", onMove);
-      float.kill();
       gsap.set(el, { x: 0, y: 0, rotation: 0 });
     };
-  }, [reduced, coarse]);
+  }, [reduced, coarse, figureRef]);
 
   return (
-    <div ref={wrapRef} className={className} aria-hidden="true">
-      <div data-figure className="relative">
-        {/* dim glow pool so the figure reads as lit, not pasted */}
-        <div className="absolute inset-x-[10%] bottom-[6%] top-[18%] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--energy)_22%,transparent),transparent)] blur-2xl" />
+    <div
+      ref={figureRef}
+      aria-hidden="true"
+      onPointerEnter={() => {
+        hoverRef.current = true;
+      }}
+      onPointerLeave={() => {
+        hoverRef.current = false;
+      }}
+      className="group absolute bottom-0 right-[-8vw] z-[8] h-[42svh] will-change-transform md:right-[-1vw] md:z-[15] md:h-[76svh]"
+    >
+      <div className="relative h-full transition-transform duration-500 ease-out group-hover:scale-[1.015]">
         <Image
-          src="/personal/minifig-green.webp"
+          src="/personal/bust-green.webp"
           alt=""
-          width={800}
-          height={1194}
-          priority={false}
-          className="minifig-green relative w-full"
+          width={1000}
+          height={1340}
+          priority
+          className="bust-green h-full w-auto"
         />
         <Image
-          src="/personal/minifig-fire.webp"
+          src="/personal/bust-crimson.webp"
           alt=""
-          width={800}
-          height={1194}
-          priority={false}
-          className="minifig-fire absolute inset-0 w-full"
+          width={1000}
+          height={1340}
+          className="bust-crimson absolute inset-0 h-full w-auto"
         />
       </div>
     </div>
@@ -160,6 +165,8 @@ function Band({ text, reverse }: { text: string; reverse?: boolean }) {
 
 export function Hero() {
   const scope = useRef<HTMLDivElement>(null);
+  const bustRef = useRef<HTMLDivElement>(null);
+  const hoverRef = useRef(false);
   const reduced = useReducedMotion();
 
   useEffect(() => {
@@ -184,6 +191,8 @@ export function Hero() {
       className="relative flex min-h-svh w-full flex-col justify-between overflow-hidden py-6"
     >
       <HeroBackground />
+      <HeroBust figureRef={bustRef} hoverRef={hoverRef} />
+      <EmberField figureRef={bustRef} hoverRef={hoverRef} />
 
       {/* top bar: wordmark + tag */}
       <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-6">
@@ -223,28 +232,20 @@ export function Hero() {
           </span>
         </h1>
 
-        {/* the minifig, inline on mobile so it never collides with the type */}
-        <div data-hero-in className="md:hidden">
-          <HeroFigure className="mx-auto mt-6 w-36" />
-        </div>
-
         <div
           data-hero-in
           className="mt-10 flex flex-wrap items-center justify-center gap-3"
         >
           <MagneticButton
             href="#work"
-            className="!border-[var(--accent)] !text-[var(--accent)]"
+            className="!border-[var(--accent)] !text-[var(--accent)] bg-[#05070a]/70 backdrop-blur-[2px]"
           >
             View Work
           </MagneticButton>
-          <MagneticButton href="#resume">Resume</MagneticButton>
+          <MagneticButton href="#resume" className="bg-[#05070a]/70 backdrop-blur-[2px]">
+            Resume
+          </MagneticButton>
         </div>
-      </div>
-
-      {/* the minifig, floating stage-right on desktop */}
-      <div data-hero-in className="absolute bottom-[9svh] right-[3vw] z-10 hidden md:block">
-        <HeroFigure className="w-[min(24vw,320px)]" />
       </div>
 
       {/* bottom: social + marquee */}
