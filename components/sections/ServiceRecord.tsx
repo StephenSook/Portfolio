@@ -1,16 +1,10 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Reveal } from "@/components/anim/Reveal";
 import { KineticText } from "@/components/hud/KineticText";
-import { toast } from "@/lib/toast";
 import { useCoarsePointer, useReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { experience } from "@/data/experience";
@@ -26,11 +20,7 @@ const kindLabel: Record<Role["kind"], string> = {
   teaching: "Teaching",
 };
 
-/**
- * Rank styling keyed by the leading digit of a win label. No badge graphics:
- * each finish is a Fraunces serif rank glyph tinted by tier (gold / silver /
- * bronze, with green as the catch-all for anything without a 1-3 placing).
- */
+/** Tier styling keyed by the leading digit of a win label. */
 const rankTier: Record<number, { rank: string; color: string; tier: string }> = {
   1: { rank: "1ST", color: "var(--forerunner)", tier: "Gold" },
   2: { rank: "2ND", color: "#c8d2dc", tier: "Silver" },
@@ -70,8 +60,8 @@ function parseStat(label: string): StatParts | null {
 
 /**
  * Counts up to a target when scrolled into view. Drives DOM text through a ref
- * inside a requestAnimationFrame loop (no setState in the effect). Under reduced
- * motion the effect no-ops and the final value stays rendered.
+ * inside a requestAnimationFrame loop (no setState in the effect). Under
+ * reduced motion the effect no-ops and the final value stays rendered.
  */
 function CountUp({
   value,
@@ -154,53 +144,6 @@ function DrawRail() {
   );
 }
 
-/** Reveals its direct children in a rising cascade on scroll (reduced-safe). */
-function Stagger({
-  children,
-  className,
-  y = 26,
-}: {
-  children: ReactNode;
-  className?: string;
-  y?: number;
-}) {
-  const ref = useRef<HTMLUListElement | null>(null);
-  const reduced = useReducedMotion();
-
-  useEffect(() => {
-    if (reduced) return;
-    const el = ref.current;
-    if (!el) return;
-    const targets = Array.from(el.children) as HTMLElement[];
-    if (!targets.length) return;
-    gsap.set(targets, { opacity: 0, y, force3D: true });
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          gsap.to(targets, {
-            opacity: 1,
-            y: 0,
-            duration: 0.85,
-            ease: "power4.out",
-            stagger: 0.08,
-            force3D: true,
-          });
-          io.disconnect();
-        }
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [reduced, y]);
-
-  return (
-    <ul ref={ref} className={cn(className)}>
-      {children}
-    </ul>
-  );
-}
-
 function SectionRule({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-4">
@@ -209,215 +152,6 @@ function SectionRule({ children }: { children: ReactNode }) {
       </span>
       <span aria-hidden="true" className="h-px flex-1 bg-[var(--line)]" />
     </div>
-  );
-}
-
-/**
- * A single podium finish rendered as a premium, pointer-reactive rank card with
- * no badge graphic. A large Fraunces serif rank ("1ST", "2ND", "3RD") derived
- * from the win label leads, with the win label and its detail beneath it, all
- * wrapped in a tier-tinted gradient border that slowly rotates and a light that
- * sweeps across on hover. The perspective tilt is written straight onto the ref
- * inside the pointer handler (never through React state); the rank glyph floats
- * on a gsap loop and the border angle is advanced by gsap through a shared
- * custom property. Under reduced motion or on coarse pointers every motion
- * effect no-ops and the card renders fully static.
- */
-function RankCard({ win, index }: { win: Achievement; index: number }) {
-  const tiltRef = useRef<HTMLDivElement | null>(null);
-  const floatRef = useRef<HTMLDivElement | null>(null);
-  const reduced = useReducedMotion();
-  const coarse = useCoarsePointer();
-  const interactive = !reduced && !coarse;
-  const tier = rankTier[rankOf(win.label)] ?? rankTier[0];
-
-  // Gentle idle float on the rank glyph (transform-only, auto-pauses offscreen).
-  useEffect(() => {
-    if (reduced || coarse) return;
-    const el = floatRef.current;
-    if (!el) return;
-    const tween = gsap.to(el, {
-      y: -7,
-      duration: 3,
-      ease: "sine.inOut",
-      repeat: -1,
-      yoyo: true,
-    });
-    tween.seek((index % 3) * 0.9); // desync neighbouring cards
-    return () => {
-      tween.kill();
-    };
-  }, [reduced, coarse, index]);
-
-  // Rotate the gradient border by advancing the shared --angle custom property.
-  useEffect(() => {
-    if (reduced || coarse) return;
-    const el = tiltRef.current;
-    if (!el) return;
-    const state = { a: 0 };
-    const tween = gsap.to(state, {
-      a: 360,
-      duration: 7,
-      ease: "none",
-      repeat: -1,
-      onUpdate: () => {
-        el.style.setProperty("--angle", `${state.a}deg`);
-      },
-    });
-    tween.seek((index % 3) * 2.3); // desync neighbouring borders
-    return () => {
-      tween.kill();
-    };
-  }, [reduced, coarse, index]);
-
-  const handleMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const el = tiltRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width - 0.5;
-    const py = (e.clientY - r.top) / r.height - 0.5;
-    el.style.transform = `rotateX(${(py * -12).toFixed(2)}deg) rotateY(${(px * 14).toFixed(2)}deg)`;
-  };
-
-  const handleLeave = () => {
-    const el = tiltRef.current;
-    if (el) el.style.transform = "rotateX(0deg) rotateY(0deg)";
-  };
-
-  return (
-    <li className="group [perspective:1100px]">
-      <div
-        ref={tiltRef}
-        onPointerMove={interactive ? handleMove : undefined}
-        onPointerLeave={interactive ? handleLeave : undefined}
-        style={
-          {
-            ["--tier"]: tier.color,
-            ["--angle"]: "130deg",
-          } as CSSProperties
-        }
-        className="relative h-full rounded-lg transition-transform duration-200 ease-out will-change-transform"
-      >
-        {/* rotating gradient border rim */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -inset-px rounded-lg opacity-70 transition-opacity duration-500 group-hover:opacity-100"
-          style={{
-            background:
-              "conic-gradient(from var(--angle), transparent 0deg, var(--tier) 60deg, color-mix(in srgb, var(--tier) 22%, transparent) 140deg, transparent 210deg, var(--tier) 320deg, transparent 360deg)",
-          }}
-        />
-        {/* soft outer glow, blooms on hover */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -inset-1 rounded-xl opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-50"
-          style={{
-            background:
-              "conic-gradient(from var(--angle), transparent 0deg, var(--tier) 60deg, transparent 210deg, var(--tier) 320deg, transparent 360deg)",
-          }}
-        />
-        {/* card surface */}
-        <div className="relative flex h-full flex-col overflow-hidden rounded-[7px] border border-[var(--line)] bg-[linear-gradient(155deg,color-mix(in_srgb,var(--panel)_94%,transparent),var(--bg))] px-6 py-6">
-          {/* glow pool behind the rank glyph, intensifies on hover */}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute -left-6 -top-8 h-40 w-40 rounded-full opacity-40 blur-2xl transition-opacity duration-500 group-hover:opacity-80"
-            style={{
-              background:
-                "radial-gradient(closest-side, color-mix(in srgb, var(--tier) 55%, transparent), transparent)",
-            }}
-          />
-          {/* hover shine sweep */}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -translate-x-full transition-transform duration-[900ms] ease-out group-hover:translate-x-full"
-            style={{
-              background:
-                "linear-gradient(115deg, transparent 34%, color-mix(in srgb, var(--tier) 16%, transparent) 47%, rgba(255,255,255,0.16) 50%, color-mix(in srgb, var(--tier) 16%, transparent) 53%, transparent 66%)",
-            }}
-          />
-
-          <div className="relative flex items-center justify-between">
-            <span
-              className="font-hud text-[10px] uppercase tracking-[0.28em]"
-              style={{ color: "var(--tier)" }}
-            >
-              {tier.tier}
-            </span>
-            <span className="font-hud text-[10px] tracking-[0.2em] text-[var(--muted)]">
-              {`// ${String(index + 1).padStart(2, "0")}`}
-            </span>
-          </div>
-
-          <div ref={floatRef} className="relative mt-4">
-            <span
-              className="block font-display text-7xl leading-[0.85] tabular-nums"
-              style={{
-                color: "var(--tier)",
-                textShadow:
-                  "0 0 34px color-mix(in srgb, var(--tier) 40%, transparent)",
-              }}
-            >
-              {tier.rank}
-            </span>
-          </div>
-
-          <span
-            aria-hidden="true"
-            className="mt-5 block h-px w-full"
-            style={{
-              background:
-                "linear-gradient(90deg, var(--tier), color-mix(in srgb, var(--tier) 18%, transparent), transparent)",
-            }}
-          />
-
-          <p className="relative mt-4 font-display text-lg leading-snug text-[var(--text)]">
-            {win.label}
-          </p>
-          <p className="relative mt-2 text-xs leading-relaxed text-[var(--muted)]">
-            {win.detail}
-          </p>
-        </div>
-      </div>
-    </li>
-  );
-}
-
-/** Thin accent bar under a stat that draws in from the left on scroll. */
-function DrawBar({ color }: { color: string }) {
-  const ref = useRef<HTMLSpanElement | null>(null);
-  const reduced = useReducedMotion();
-
-  useEffect(() => {
-    if (reduced) return;
-    const el = ref.current;
-    if (!el) return;
-    gsap.set(el, { scaleX: 0, transformOrigin: "left center" });
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          gsap.to(el, {
-            scaleX: 1,
-            duration: 1.1,
-            ease: "power3.out",
-            delay: 0.15,
-          });
-          io.disconnect();
-        }
-      },
-      { threshold: 0.4 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [reduced]);
-
-  return (
-    <span
-      ref={ref}
-      aria-hidden="true"
-      className="mt-3 block h-[2px] w-full origin-left rounded-full"
-      style={{ background: `linear-gradient(90deg, ${color}, transparent)` }}
-    />
   );
 }
 
@@ -445,10 +179,229 @@ function ClearanceIcon() {
   );
 }
 
-export default function ServiceRecord() {
-  const sectionRef = useRef<HTMLElement | null>(null);
-  const firedRef = useRef(false);
+/* ------------------------------------------------------------------ */
+/* Honors shelf: the horizontal gallery                                */
+/* ------------------------------------------------------------------ */
 
+/** One podium finish. Deliberately quiet: tier color, rank glyph, one hover. */
+function FinishCard({ win, index }: { win: Achievement; index: number }) {
+  const tier = rankTier[rankOf(win.label)] ?? rankTier[0];
+  return (
+    <article
+      className="flex w-[300px] shrink-0 snap-center flex-col rounded-lg border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_80%,transparent)] px-7 py-7 transition-all duration-300 hover:-translate-y-1 hover:border-[color-mix(in_srgb,var(--tier)_45%,transparent)] md:w-[350px]"
+      style={{ ["--tier"]: tier.color } as CSSProperties}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          className="font-hud text-[10px] uppercase tracking-[0.28em]"
+          style={{ color: "var(--tier)" }}
+        >
+          {tier.tier}
+        </span>
+        <span className="font-hud text-[10px] tracking-[0.2em] text-[var(--muted)]">
+          {`// ${String(index + 1).padStart(2, "0")}`}
+        </span>
+      </div>
+
+      <span
+        className="mt-5 block font-display text-6xl leading-[0.85] md:text-7xl"
+        style={{
+          color: "var(--tier)",
+          textShadow: "0 0 30px color-mix(in srgb, var(--tier) 32%, transparent)",
+        }}
+      >
+        {tier.rank}
+      </span>
+
+      <p className="mt-5 font-display text-lg leading-snug text-[var(--text)]">
+        {win.label}
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{win.detail}</p>
+
+      <span
+        aria-hidden="true"
+        className="mt-auto block h-px w-full"
+        style={{
+          background:
+            "linear-gradient(90deg, var(--tier), color-mix(in srgb, var(--tier) 15%, transparent), transparent)",
+        }}
+      />
+    </article>
+  );
+}
+
+/** Opening panel: the record, in numbers that count up. */
+function StatsPanel({ stats }: { stats: Achievement[] }) {
+  return (
+    <article className="flex w-[320px] shrink-0 snap-center flex-col rounded-lg border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_80%,transparent)] px-7 py-7 md:w-[440px]">
+      <span className="hud-label text-[var(--muted)]">By the numbers</span>
+      <div className="mt-6 grid flex-1 grid-cols-2 gap-x-6 gap-y-8">
+        {stats.map((s, i) => {
+          const parts = parseStat(s.label);
+          const color = i === 0 ? "var(--forerunner)" : "var(--accent)";
+          return (
+            <div key={s.label} className="flex flex-col">
+              <span
+                className="font-display text-4xl leading-none md:text-5xl"
+                style={{
+                  color,
+                  textShadow: `0 0 26px color-mix(in srgb, ${color} 32%, transparent)`,
+                }}
+              >
+                {parts ? (
+                  <CountUp value={parts.value} decimals={parts.decimals} suffix={parts.suffix} />
+                ) : (
+                  s.label
+                )}
+              </span>
+              <span className="mt-2 text-xs leading-snug text-[var(--text)]/80">
+                {parts?.post || s.detail}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
+/** Closing panel: certifications as a quiet ledger. */
+function CertsPanel({ certs }: { certs: Achievement[] }) {
+  return (
+    <article className="flex w-[320px] shrink-0 snap-center flex-col rounded-lg border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_80%,transparent)] px-7 py-7 md:w-[420px]">
+      <span className="hud-label text-[var(--muted)]">Certifications</span>
+      <ul className="mt-4 flex flex-1 flex-col justify-center">
+        {certs.map((c) => (
+          <li
+            key={c.label}
+            className="flex items-start gap-3 border-b border-[var(--line)] py-3 last:border-b-0"
+          >
+            <span className="mt-0.5">
+              <ClearanceIcon />
+            </span>
+            <div className="leading-tight">
+              <span className="block font-hud text-xs uppercase tracking-[0.08em] text-[var(--text)]">
+                {c.label}
+              </span>
+              <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
+                {c.detail}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+/**
+ * The commendations shelf. On fine pointers the block pins and vertical scroll
+ * slides the whole shelf sideways (px-for-px, so scrub speed feels natural);
+ * on touch or reduced motion it falls back to a native snap-x carousel.
+ */
+function HonorsShelf({
+  wins,
+  stats,
+  certs,
+}: {
+  wins: Achievement[];
+  stats: Achievement[];
+  certs: Achievement[];
+}) {
+  const pinRef = useRef<HTMLDivElement | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const barRef = useRef<HTMLSpanElement | null>(null);
+  const coarse = useCoarsePointer();
+  const reduced = useReducedMotion();
+  const pinned = !coarse && !reduced;
+
+  useEffect(() => {
+    if (!pinned) return;
+    const pin = pinRef.current;
+    const track = trackRef.current;
+    if (!pin || !track) return;
+    gsap.registerPlugin(ScrollTrigger);
+
+    const ctx = gsap.context(() => {
+      const dist = () => Math.max(0, track.scrollWidth - window.innerWidth);
+      gsap.to(track, {
+        x: () => -dist(),
+        ease: "none",
+        scrollTrigger: {
+          trigger: pin,
+          start: "top top",
+          end: () => "+=" + dist(),
+          pin: true,
+          scrub: 1,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            if (barRef.current) {
+              barRef.current.style.transform = `scaleX(${self.progress})`;
+            }
+          },
+        },
+      });
+    }, pin);
+    return () => ctx.revert();
+  }, [pinned]);
+
+  const cards = (
+    <>
+      <StatsPanel stats={stats} />
+      {wins.map((w, i) => (
+        <FinishCard key={w.label} win={w} index={i} />
+      ))}
+      <CertsPanel certs={certs} />
+    </>
+  );
+
+  // Touch / reduced motion: native horizontal snap carousel, no pinning.
+  if (!pinned) {
+    return (
+      <div className="mt-10">
+        <SectionRule>Commendations — swipe</SectionRule>
+        <div className="-mx-6 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-4">
+          {cards}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={pinRef} className="relative flex h-svh flex-col justify-center overflow-hidden">
+      <div className="mx-auto w-full max-w-6xl px-6">
+        <SectionRule>Commendations — the shelf slides as you scroll</SectionRule>
+      </div>
+
+      <div
+        ref={trackRef}
+        className="mt-10 flex w-max items-stretch gap-5 will-change-transform"
+        style={{
+          paddingLeft: "max(1.5rem, calc((100vw - 72rem) / 2 + 1.5rem))",
+          paddingRight: "14vw",
+        }}
+      >
+        {cards}
+      </div>
+
+      <div className="mx-auto mt-12 w-full max-w-6xl px-6">
+        <span className="relative block h-px w-full max-w-72 overflow-hidden bg-[var(--line)]">
+          <span
+            ref={barRef}
+            className="absolute inset-0 origin-left scale-x-0 bg-[var(--accent)]"
+          />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Section                                                             */
+/* ------------------------------------------------------------------ */
+
+export default function ServiceRecord() {
   // Founder role first, everything else keeps source order.
   const roles = [...experience].sort((a, b) => {
     if (a.kind === "founder" && b.kind !== "founder") return -1;
@@ -460,224 +413,107 @@ export default function ServiceRecord() {
   const stats = achievements.filter((a) => a.kind === "stat");
   const certs = achievements.filter((a) => a.kind === "cert");
 
-  // On first scroll into view, cascade the top wins as achievement toasts (once).
-  useEffect(() => {
-    const node = sectionRef.current;
-    if (!node) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const io = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry?.isIntersecting && !firedRef.current) {
-          firedRef.current = true;
-          achievements
-            .filter((a) => a.kind === "win")
-            .slice(0, 3)
-            .forEach((a, i) => {
-              timers.push(
-                setTimeout(
-                  () => toast.unlock({ title: a.label, detail: a.detail }),
-                  400 + i * 700
-                )
-              );
-            });
-          io.disconnect();
-        }
-      },
-      { threshold: 0.2 }
-    );
-    io.observe(node);
-    return () => {
-      io.disconnect();
-      timers.forEach(clearTimeout);
-    };
-  }, []);
-
   return (
     <section
       id="service-record"
-      ref={sectionRef}
-      className="relative mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
+      className="relative w-full"
       style={{ ["--accent"]: ACCENT } as CSSProperties}
     >
-      {/* Header */}
-      <span className="hud-label text-[var(--muted)]">
-        Experience // Service record
-      </span>
-      <div className="mt-3 overflow-hidden">
-        <KineticText
-          as="h2"
-          text="Service Record"
-          onScroll
-          className="font-display text-5xl text-[var(--text)] md:text-7xl"
-        />
-      </div>
-      <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted)] md:text-xl">
-        Field history and the commendations that came with it, pulled straight
-        from the record.
-      </p>
+      <div className="mx-auto w-full max-w-6xl px-6 pt-20 md:pt-28">
+        {/* Header */}
+        <span className="hud-label text-[var(--muted)]">
+          Experience // Service record
+        </span>
+        <div className="mt-3 overflow-hidden">
+          <KineticText
+            as="h2"
+            text="Service Record"
+            onScroll
+            className="font-display text-5xl text-[var(--text)] md:text-7xl"
+          />
+        </div>
+        <p className="mt-5 max-w-xl text-lg leading-relaxed text-[var(--muted)]">
+          Field history and the commendations that came with it, pulled straight
+          from the record.
+        </p>
 
-      {/* Part 1: Deployment log timeline */}
-      <div className="mt-16 md:mt-24">
-        <SectionRule>Deployment log</SectionRule>
+        {/* Deployment log timeline (compact) */}
+        <div className="mt-12 md:mt-16">
+          <SectionRule>Deployment log</SectionRule>
 
-        <div className="relative mt-10">
-          <DrawRail />
-          <ol className="space-y-9 md:space-y-12">
-            {roles.map((role) => {
-              const founder = role.kind === "founder";
-              return (
-                <li key={role.org} className="group relative pl-11 md:pl-14">
-                  <span
-                    aria-hidden="true"
-                    className="absolute left-[1px] top-1.5 z-10 h-3.5 w-3.5 rounded-full border-2 transition-transform duration-300 group-hover:scale-125"
-                    style={{
-                      borderColor: founder ? "var(--accent)" : "var(--line-strong)",
-                      background: founder ? "var(--accent)" : "var(--bg)",
-                      boxShadow: founder
-                        ? "0 0 16px color-mix(in srgb, var(--accent) 70%, transparent)"
-                        : undefined,
-                    }}
-                  />
-                  <Reveal
-                    className={cn(
-                      "transition-colors duration-300",
-                      founder &&
-                        "rounded-sm border-l-2 border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] p-5 md:p-6"
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span
-                        className="hud-label"
-                        style={{ color: founder ? "var(--accent)" : "var(--muted)" }}
-                      >
-                        {founder ? "★ Founder" : kindLabel[role.kind]}
-                      </span>
-                      <span className="ml-auto font-hud text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-                        {role.period}
-                      </span>
-                    </div>
-                    <h3 className="mt-2 font-display text-3xl text-[var(--text)] transition-colors duration-300 group-hover:text-[var(--accent)] md:text-4xl">
-                      {role.org}
-                    </h3>
-                    <p className="mt-1.5 text-sm text-[var(--text)]/85">
-                      {role.title}{" "}
-                      <span className="text-[var(--muted)]">
-                        {"// "}
-                        {role.location}
-                      </span>
-                    </p>
-                    <ul className="mt-4 space-y-2.5">
-                      {role.bullets.map((bullet, j) => (
-                        <li
-                          key={j}
-                          className="flex gap-3 text-sm leading-relaxed text-[var(--muted)]"
+          <div className="relative mt-8">
+            <DrawRail />
+            <ol className="space-y-7 md:space-y-9">
+              {roles.map((role) => {
+                const founder = role.kind === "founder";
+                return (
+                  <li key={role.org} className="group relative pl-11 md:pl-14">
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-[1px] top-1.5 z-10 h-3.5 w-3.5 rounded-full border-2 transition-transform duration-300 group-hover:scale-125"
+                      style={{
+                        borderColor: founder ? "var(--accent)" : "var(--line-strong)",
+                        background: founder ? "var(--accent)" : "var(--bg)",
+                        boxShadow: founder
+                          ? "0 0 16px color-mix(in srgb, var(--accent) 70%, transparent)"
+                          : undefined,
+                      }}
+                    />
+                    <Reveal
+                      className={cn(
+                        "transition-colors duration-300",
+                        founder &&
+                          "rounded-sm border-l-2 border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] p-5"
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span
+                          className="hud-label"
+                          style={{ color: founder ? "var(--accent)" : "var(--muted)" }}
                         >
-                          <span
-                            aria-hidden="true"
-                            className="mt-[7px] h-1 w-1 shrink-0 rounded-full"
-                            style={{ background: "var(--accent)" }}
-                          />
-                          <span>{bullet}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </Reveal>
-                </li>
-              );
-            })}
-          </ol>
+                          {founder ? "★ Founder" : kindLabel[role.kind]}
+                        </span>
+                        <span className="ml-auto font-hud text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                          {role.period}
+                        </span>
+                      </div>
+                      <h3 className="mt-2 font-display text-2xl text-[var(--text)] transition-colors duration-300 group-hover:text-[var(--accent)] md:text-3xl">
+                        {role.org}
+                      </h3>
+                      <p className="mt-1 text-sm text-[var(--text)]/85">
+                        {role.title}{" "}
+                        <span className="text-[var(--muted)]">
+                          {"// "}
+                          {role.location}
+                        </span>
+                      </p>
+                      <ul className="mt-3 space-y-2">
+                        {role.bullets.map((bullet, j) => (
+                          <li
+                            key={j}
+                            className="flex gap-3 text-sm leading-relaxed text-[var(--muted)]"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="mt-[7px] h-1 w-1 shrink-0 rounded-full"
+                              style={{ background: "var(--accent)" }}
+                            />
+                            <span>{bullet}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </Reveal>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
         </div>
       </div>
 
-      {/* Part 2: Commendations */}
-      <div className="mt-16 md:mt-24">
-        <SectionRule>Commendations</SectionRule>
-
-        {/* Wins as an interactive medal showcase */}
-        <span className="mt-9 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-          Podium finishes
-        </span>
-        <Stagger className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {wins.map((w, i) => (
-            <RankCard key={w.label} win={w} index={i} />
-          ))}
-        </Stagger>
-
-        {/* Stats as big count-up numbers */}
-        <span className="mt-14 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-          By the numbers
-        </span>
-        <Stagger className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {stats.map((s, i) => {
-            const parts = parseStat(s.label);
-            const color = i === 0 ? "var(--forerunner)" : "var(--accent)";
-            return (
-              <li key={s.label} className="group">
-                <div
-                  className="flex h-full flex-col rounded-md border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--stat)] hover:shadow-[0_0_40px_-18px_var(--stat)]"
-                  style={{ ["--stat"]: color } as CSSProperties}
-                >
-                  {parts?.pre && (
-                    <span className="font-hud text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                      {parts.pre}
-                    </span>
-                  )}
-                  <span
-                    className="mt-1 font-display text-5xl leading-none md:text-6xl"
-                    style={{
-                      color,
-                      textShadow: `0 0 28px color-mix(in srgb, ${color} 38%, transparent)`,
-                    }}
-                  >
-                    {parts ? (
-                      <CountUp
-                        value={parts.value}
-                        decimals={parts.decimals}
-                        suffix={parts.suffix}
-                      />
-                    ) : (
-                      s.label
-                    )}
-                  </span>
-                  <DrawBar color={color} />
-                  {parts?.post && (
-                    <span className="mt-2.5 text-sm leading-snug text-[var(--text)]/80">
-                      {parts.post}
-                    </span>
-                  )}
-                  <span className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
-                    {s.detail}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </Stagger>
-
-        {/* Certs as clearance chips */}
-        <span className="mt-14 block font-hud text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-          Certifications
-        </span>
-        <Stagger className="mt-5 flex flex-wrap gap-2.5" y={16}>
-          {certs.map((c) => (
-            <li key={c.label}>
-              <div className="group inline-flex items-center gap-2.5 rounded-md border border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] px-3.5 py-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] hover:shadow-[0_0_30px_-16px_var(--accent)]">
-                <span className="transition-transform duration-300 group-hover:scale-110">
-                  <ClearanceIcon />
-                </span>
-                <div className="leading-tight">
-                  <span className="block font-hud text-xs uppercase tracking-[0.08em] text-[var(--text)] transition-colors duration-300 group-hover:text-[var(--accent)]">
-                    {c.label}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
-                    {c.detail}
-                  </span>
-                </div>
-              </div>
-            </li>
-          ))}
-        </Stagger>
+      {/* Commendations: horizontal shelf */}
+      <div className="mt-8 md:mt-12">
+        <HonorsShelf wins={wins} stats={stats} certs={certs} />
       </div>
     </section>
   );
