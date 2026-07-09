@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { FiGithub, FiLinkedin, FiMail } from "react-icons/fi";
@@ -14,16 +15,36 @@ import { profile } from "@/data/profile";
  * star field and the readability vignettes. Replaces the WebGL canvas the hero
  * used to carry, so first paint is lighter and scroll stays smooth.
  */
+// Living-smoke WebGL, code-split off the first-paint bundle.
+const SmokeShader = dynamic(
+  () => import("@/components/three/SmokeShader").then((m) => m.SmokeShader),
+  { ssr: false, loading: () => null }
+);
+
+/**
+ * Atmosphere: a living domain-warped smoke shader on capable setups; the
+ * photographic smoke plates + aurora wash as the static fallback for touch,
+ * reduced motion and pre-hydration. Stars and vignettes sit over both.
+ */
 function HeroBackground() {
+  const reduced = useReducedMotion();
+  const coarse = useCoarsePointer();
+  const live = !reduced && !coarse;
+
   return (
     <div aria-hidden className="absolute inset-0 overflow-hidden bg-[#05070a]">
-      <div className="hero-aurora hero-aurora-a" />
-      <div className="hero-aurora hero-aurora-b" />
-      {/* photographic smoke plates on screen blend: black falls away, mist stays */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/textures/smoke-cool.webp" alt="" className="hero-smoke hero-smoke-a" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/textures/smoke-warm.webp" alt="" className="hero-smoke hero-smoke-b" />
+      {live ? (
+        <SmokeShader />
+      ) : (
+        <>
+          <div className="hero-aurora hero-aurora-a" />
+          <div className="hero-aurora hero-aurora-b" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/textures/smoke-cool.webp" alt="" className="hero-smoke hero-smoke-a" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/textures/smoke-warm.webp" alt="" className="hero-smoke hero-smoke-b" />
+        </>
+      )}
       <div className="hero-stars absolute inset-0" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(5,7,10,0.7)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,7,10,0.65),transparent_22%,transparent_72%,rgba(5,7,10,0.9))]" />
@@ -33,7 +54,6 @@ function HeroBackground() {
 
 const PLATE_STATS = [
   { v: "07", k: "Podium finishes" },
-  { v: "15+", k: "Hackathons entered" },
   { v: "3.8", k: "GPA · CS, AI & ML" },
 ];
 
