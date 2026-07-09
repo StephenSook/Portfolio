@@ -52,7 +52,7 @@ export function InterestsReel() {
   return (
     <section
       id="bench"
-      className="relative w-full overflow-hidden py-24 md:py-32"
+      className="relative w-full overflow-hidden py-20 md:py-24"
       style={{ ["--accent"]: "#f5b33c" } as CSSProperties}
     >
       <div className="mx-auto mb-10 max-w-6xl px-6">

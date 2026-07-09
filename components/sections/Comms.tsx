@@ -119,7 +119,7 @@ export default function Comms() {
   return (
     <section
       id="contact"
-      className="relative mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
+      className="relative mx-auto w-full max-w-6xl px-6 py-20 md:py-24"
       style={{ ["--accent"]: ACCENT } as CSSProperties}
     >
       <span className="hud-label">CONTACT // ESTABLISH COMMS</span>

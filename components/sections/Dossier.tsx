@@ -1,7 +1,7 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { HudFrame } from "@/components/hud/HudFrame";
+import { useState, type CSSProperties } from "react";
+import { FiDownload, FiEye, FiEyeOff } from "react-icons/fi";
 import { KineticText } from "@/components/hud/KineticText";
 import { MagneticButton } from "@/components/hud/MagneticButton";
 import { useCoarsePointer } from "@/lib/motion";
@@ -9,48 +9,28 @@ import { profile } from "@/data/profile";
 
 const RESUME_SRC = "/resume/Stephen_Sookra_Resume.pdf";
 
-/** Small rotated bracketed stamp built from the .hud-label utility. */
-function Stamp({
-  text,
-  accent,
-  className,
-}: {
-  text: string;
-  accent?: string;
-  className?: string;
-}) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`hud-label inline-block border px-3 py-1.5 ${className ?? ""}`}
-      style={
-        {
-          borderColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
-          ...(accent ? { "--accent": accent } : {}),
-        } as CSSProperties
-      }
-    >
-      {text}
-    </span>
-  );
-}
+const FACTS = [
+  { k: "File", v: "PDF // 1 page" },
+  { k: "Degree", v: "B.S. CS — AI & ML" },
+  { k: "Class", v: "May 2028" },
+  { k: "Status", v: "Open to internships" },
+];
 
+/**
+ * Compact resume block. The old always-open 80vh PDF viewer cost a full
+ * screen of scroll; now the facts strip + download lead, and the inline
+ * viewer mounts only when asked for (desktop only).
+ */
 export function Dossier() {
   const coarse = useCoarsePointer();
+  const [open, setOpen] = useState(false);
 
   return (
     <section
       id="resume"
-      className="relative mx-auto w-full max-w-6xl px-6 py-24 md:py-32"
+      className="relative mx-auto w-full max-w-6xl px-6 py-20 md:py-24"
       style={{ "--accent": "#8dff5a" } as CSSProperties}
     >
-      {/* Floating decorative stamp, desktop only so it never crowds mobile. */}
-      <Stamp
-        text="CLASSIFIED // UNSC"
-        accent="#f5b33c"
-        className="pointer-events-none absolute right-6 top-20 hidden rotate-6 opacity-70 md:inline-block"
-      />
-
       <span className="hud-label">RESUME // DOSSIER</span>
 
       <KineticText
@@ -60,65 +40,53 @@ export function Dossier() {
         className="mt-3 font-display text-5xl text-[var(--text)] md:text-7xl"
       />
 
-      <p className="mt-5 max-w-xl text-sm leading-relaxed text-[var(--muted)]">
-        The full service record for {profile.name}. Read it inline below, or pull
-        the file for your own archive.
-      </p>
-
-      {/* Metadata strip: reads like the header of a redacted file. */}
-      <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <Stamp text="CLASSIFIED // UNSC" className="-rotate-2" />
-        <span className="hud-label text-[var(--muted)]">
-          FILE // {profile.handle}
-        </span>
-        <span className="hud-label text-[var(--muted)]">
-          LOC // {profile.location}
-        </span>
-        <span className="hud-label text-[var(--muted)]">FORMAT // PDF</span>
-      </div>
-
-      {/* Viewer. Inline PDF on fine-pointer desktops; a note on touch devices. */}
-      <HudFrame
-        label="DOSSIER // S. SOOKRA"
-        className="mt-8 p-2 md:p-3"
-      >
-        {coarse ? (
-          <div className="flex flex-col items-start gap-4 px-4 py-10 sm:px-8">
-            <span className="hud-label">VIEWER // DESKTOP ONLY</span>
-            <p className="max-w-md text-sm leading-relaxed text-[var(--muted)]">
-              The embedded reader is built for larger displays. Download the
-              file to open the full dossier on your device.
-            </p>
-            <div className="flex items-center gap-2 font-hud text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
-              <span
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: "var(--accent)" }}
-              />
-              Ready for exfil
+      <div className="mt-8 overflow-hidden rounded-lg border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_70%,transparent)]">
+        {/* facts strip */}
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-5 border-b border-[var(--line)] p-6 sm:grid-cols-4 md:p-8">
+          {FACTS.map((f) => (
+            <div key={f.k}>
+              <dt className="hud-label mb-1 text-[var(--muted)]">{f.k}</dt>
+              <dd className="font-display text-lg text-[var(--text)] md:text-xl">
+                {f.v}
+              </dd>
             </div>
-          </div>
-        ) : (
-          <iframe
-            src={RESUME_SRC}
-            title={`${profile.name} resume`}
-            loading="lazy"
-            className="h-[80vh] w-full rounded-sm border-0 bg-[var(--panel-2)]"
-          />
-        )}
-      </HudFrame>
+          ))}
+        </dl>
 
-      {/* Download is always available, regardless of viewer mode. */}
-      <div className="mt-6 flex flex-wrap items-center gap-4">
-        <MagneticButton
-          href={RESUME_SRC}
-          external
-          ariaLabel={`Download ${profile.name} resume as a PDF`}
-        >
-          EXFIL DOSSIER
-        </MagneticButton>
-        <span className="hud-label text-[var(--muted)]">
-          {"//"} NO REDACTIONS ON RECORD
-        </span>
+        {/* actions */}
+        <div className="flex flex-wrap items-center gap-4 p-6 md:p-8">
+          <MagneticButton
+            href={RESUME_SRC}
+            external
+            ariaLabel={`Download ${profile.name} resume as a PDF`}
+          >
+            <FiDownload size={14} /> Download resume
+          </MagneticButton>
+          {!coarse && (
+            <MagneticButton
+              onClick={() => setOpen((v) => !v)}
+              ariaLabel={open ? "Hide inline resume preview" : "Preview resume inline"}
+            >
+              {open ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+              {open ? "Hide preview" : "Preview inline"}
+            </MagneticButton>
+          )}
+          <span className="hud-label text-[var(--muted)]">
+            {"//"} NO REDACTIONS ON RECORD
+          </span>
+        </div>
+
+        {/* inline viewer, mounted on demand only */}
+        {open && !coarse && (
+          <div className="border-t border-[var(--line)] p-2 md:p-3">
+            <iframe
+              src={RESUME_SRC}
+              title={`${profile.name} resume`}
+              loading="lazy"
+              className="h-[75vh] w-full rounded-sm border-0 bg-[var(--panel-2)]"
+            />
+          </div>
+        )}
       </div>
     </section>
   );

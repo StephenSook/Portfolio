@@ -28,7 +28,7 @@ export default function About() {
   return (
     <section
       id="about"
-      className="relative w-full overflow-hidden py-24 md:py-36"
+      className="relative w-full overflow-hidden py-20 md:py-28"
       style={{ ["--accent"]: "#8dff5a" } as CSSProperties}
     >
       <div className="mx-auto max-w-6xl px-6">
@@ -108,7 +108,7 @@ export default function About() {
       </div>
 
       {/* experience marquee */}
-      <div className="mt-20 border-y border-[var(--line)] py-6">
+      <div className="mt-14 border-y border-[var(--line)] py-6">
         <p className="mx-auto mb-4 max-w-6xl px-6 hud-label text-[var(--muted)]">
           Experience &amp; affiliations
         </p>
